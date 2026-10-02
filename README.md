@@ -10,6 +10,7 @@ It's a plain website (no build step) that keeps its data in Supabase:
 | `app.js` | Everything the planner does |
 | `config.js` | Your Supabase project URL and public key |
 | `supabase/schema.sql` | Creates the database tables and the security rules |
+| `api/` | The small server piece that talks to Basecamp |
 
 ---
 
@@ -66,6 +67,22 @@ Sign-in links and Google sign-in only return to addresses listed here.
 ### 6. Bring over your Claude entries
 
 Sign in to the new site once. Claude then imports the weeks you entered in the Claude version. That data is kept out of this repo on purpose.
+
+### 7. Basecamp to-dos (optional)
+
+This shows each person's assigned Basecamp to-dos in a tray inside the planner. You can plan any to-do into a block, and checking it off in either place checks it off in Basecamp.
+
+1. Go to [launchpad.37signals.com/integrations](https://launchpad.37signals.com/integrations) and click **Register another application**.
+   - Name: `Three-Block Week`. Company: `Vision Baptist Church`. Website: `https://three-block-week.vercel.app`.
+   - Products: **Basecamp 4**.
+   - Redirect URI: `https://three-block-week.vercel.app/api/basecamp/callback`
+2. Basecamp then shows a **Client ID** and a **Client Secret**. In Vercel, open the project, go to **Settings → Environment Variables**, and add:
+   - `BASECAMP_CLIENT_ID` with the Client ID
+   - `BASECAMP_CLIENT_SECRET` with the Client Secret
+3. Redeploy the project: **Deployments → … → Redeploy**.
+4. In the planner, each person clicks **Connect Basecamp** once.
+
+Each person's Basecamp access is encrypted and stored privately. No one else on staff can read it. **Disconnect** in the tray removes it.
 
 ---
 

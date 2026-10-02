@@ -108,3 +108,20 @@ end $$;
 
 -- Start the staff list with yourself: replace the address below, then run this line.
 -- insert into public.staff (email, is_admin) values ('you@example.org', true) on conflict (email) do nothing;
+
+-- 6. Each person's Basecamp connection (encrypted by the site's server; private to that person).
+create table if not exists public.basecamp_links (
+  user_id     uuid primary key references auth.users on delete cascade,
+  blob        text not null,
+  account     text,
+  updated_at  timestamptz not null default now()
+);
+alter table public.basecamp_links enable row level security;
+drop policy if exists "own link read" on public.basecamp_links;
+create policy "own link read" on public.basecamp_links for select to authenticated using (user_id = auth.uid());
+drop policy if exists "own link insert" on public.basecamp_links;
+create policy "own link insert" on public.basecamp_links for insert to authenticated with check (user_id = auth.uid() and public.is_staff());
+drop policy if exists "own link update" on public.basecamp_links;
+create policy "own link update" on public.basecamp_links for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists "own link delete" on public.basecamp_links;
+create policy "own link delete" on public.basecamp_links for delete to authenticated using (user_id = auth.uid());

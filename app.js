@@ -56,7 +56,7 @@
   /* ---------- rendering: blocks ---------- */
   function pris(){return getWeek(viewing,wsKey()).priorities}
   function taskLI(i,readOnly,parent){
-    return `<li class="it task${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done"><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
+    return `<li class="it task${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done"><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">BC</a>`:""}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
   }
   function listHTML(o,ids,readOnly){
     const P=pris();
@@ -143,10 +143,10 @@
     $("#staff").hidden=!staff; weekEl.hidden=staff; $("#legend").hidden=staff; $("#prio").hidden=staff;
     $("#tools").hidden=staff||tab!=="week"||ro();
     $("#summary").hidden=staff;
-    if(staff){$("#team").hidden=true;$("#viewing").hidden=true;renderStaff();return}
+    if(staff){$("#team").hidden=true;$("#viewing").hidden=true;renderBC();renderStaff();return}
     weekEl.classList.toggle("today-view",tab==="today");
     weekEl.innerHTML=(tab==="today"?[todayKey()]:weekDates()).map(dayHTML).join("");
-    renderSummary(); renderTeam(); renderViewing(); renderPrio(); renderTools();
+    renderSummary(); renderTeam(); renderViewing(); renderPrio(); renderTools(); renderBC();
   }
   function requestFull(){ if(typing()){pendingFull=true;return} renderAll() }
   function renderDay(date,focusId){
@@ -435,9 +435,11 @@
     $("#acct").textContent=u.email;
     showGate(null);
     startRealtime();
+    await bcSaveFromHash();
     await loadWeek();
     watchCal();
     flushAll();
+    bcLoad();
   }
   $("#gGoogle").onclick=()=>signInGoogle();
   $("#gEmailForm").addEventListener("submit",async e=>{
@@ -588,6 +590,7 @@
     const t=e.target; if(ro()||t.dataset.act!=="check") return; const x=ctx(t);
     const li=t.closest(".it"); const f=findItem(x.target,li.dataset.id,li.dataset.parent); if(!f||!f.item) return;
     f.item.done=t.checked; li.classList.toggle("done",t.checked); saveDay(x.date);
+    if(f.item.bc&&f.item.bc.id!=null&&f.item.bc.type!=="card"){markPlannedDone(f.item.bc.id,t.checked);bcSetDone(f.item.bc.id,t.checked)}
     const day=weekEl.querySelector(`[data-day="${x.date}"] .dlabel`);
     if(day){const had=!!day.querySelector(".carry"), has=x.date<=todayKey()&&hasUnfinished(getDay(me,x.date)); if(had!==has) renderDay(x.date)}
   });
@@ -627,16 +630,156 @@
     try{e.dataTransfer.setData("text/plain",el.dataset.id);e.dataTransfer.effectAllowed="move"}catch(_){}
   });
   function dropZone(t){return t.closest&&(t.closest(".half")||t.closest(".block:not(.is-split)"))}
-  weekEl.addEventListener("dragover",e=>{ if(!dragSrc) return; const z=dropZone(e.target); if(!z) return; e.preventDefault();
+  weekEl.addEventListener("dragover",e=>{ if(!dragSrc&&!dragBc) return; const z=dropZone(e.target); if(!z) return; e.preventDefault();
     weekEl.querySelectorAll(".drop").forEach(n=>n!==z&&n.classList.remove("drop")); z.classList.add("drop") });
   weekEl.addEventListener("dragleave",e=>{const z=dropZone(e.target); if(z&&!z.contains(e.relatedTarget)) z.classList.remove("drop")});
   weekEl.addEventListener("dragend",()=>{dragSrc=null;weekEl.querySelectorAll(".drop").forEach(n=>n.classList.remove("drop"))});
   weekEl.addEventListener("drop",e=>{
-    if(!dragSrc) return; const z=dropZone(e.target); if(!z) return; e.preventDefault();
+    if(!dragSrc&&!dragBc) return; const z=dropZone(e.target); if(!z) return; e.preventDefault();
     const bEl=z.closest(".block"), h=z.classList.contains("half")?Number(z.dataset.h):null;
+    if(dragBc){const it=dragBc;dragBc=null;z.classList.remove("drop");if(!ro()) bcAddToBlock(it,bEl.dataset.date,bEl.dataset.b,h);return}
     const s=dragSrc; dragSrc=null;
     moveItem(ctxAt(s.date,s.b,s.h),s.id,s.parent,bEl.dataset.date,bEl.dataset.b,h);
   });
+
+  /* ---------- Basecamp ---------- */
+  const bcState={status:"idle",items:[],account:"",msg:"",busy:{}};
+  let bcTimer=null, dragBc=null;
+  async function bcFetch(path,opts){
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session) throw new Error("signed out");
+    const r=await fetch(path,Object.assign({},opts,{headers:Object.assign({"Content-Type":"application/json",Authorization:"Bearer "+session.access_token},(opts&&opts.headers)||{})}));
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw Object.assign(new Error(j.error||"request failed"),{status:r.status,body:j});
+    return j;
+  }
+  async function bcLoad(quiet){
+    clearTimeout(bcTimer);
+    if(!sb||!backend) return;
+    if(!quiet&&bcState.status==="idle"){bcState.status="loading";renderBC()}
+    try{
+      const j=await bcFetch("/api/basecamp/todos");
+      if(!j.configured){bcState.status="off"}
+      else if(!j.connected){bcState.status="disconnected";bcState.msg=j.reason==="expired"?"Your Basecamp connection expired. Connect again to keep seeing your to-dos.":""}
+      else if(j.busy){bcState.msg="Basecamp asked us to slow down. Trying again shortly."}
+      else{bcState.status="ready";bcState.items=j.items||[];bcState.account=j.account||"";bcState.msg=""}
+    }catch(e){ if(bcState.status!=="ready") bcState.status="error"; bcState.msg=e.message&&e.status?e.message:"Couldn't reach Basecamp. Showing what was loaded last." }
+    renderBC();
+    bcTimer=setTimeout(()=>bcLoad(true),5*60000);
+  }
+  async function bcConnect(){
+    const btn=$("#bcConnect"); if(btn){btn.disabled=true;btn.textContent="Opening Basecamp…"}
+    try{const j=await bcFetch("/api/basecamp/start",{method:"POST",body:"{}"}); if(j.url) location.href=j.url}
+    catch(e){bcState.msg="Couldn't start the Basecamp connection. Try again.";renderBC()}
+  }
+  async function bcDisconnect(){
+    await sb.from("basecamp_links").delete().eq("user_id",me);
+    bcState.status="disconnected";bcState.items=[];bcState.msg="Basecamp disconnected.";renderBC();
+  }
+  async function bcSaveFromHash(){
+    const h=location.hash.slice(1); if(!/^bc-(link|error)=/.test(h)) return;
+    history.replaceState(null,"",location.pathname+location.search);
+    const p=new URLSearchParams(h);
+    if(p.get("bc-error")){
+      const why={declined:"You chose not to connect Basecamp.","no-account":"That Basecamp login doesn't have a Basecamp account to read.",expired:"The Basecamp connection took too long. Try again."}[p.get("bc-error")]||"Couldn't connect Basecamp. Try again.";
+      bcState.msg=why; return;
+    }
+    const {error}=await sb.from("basecamp_links").upsert({user_id:me,blob:p.get("bc-link"),account:p.get("bc-name")||"",updated_at:new Date().toISOString()});
+    bcState.msg=error?"Couldn't save the Basecamp connection. Try connecting again.":"Basecamp connected.";
+  }
+  // Where each Basecamp to-do is already planned this week.
+  function bcPlanned(){
+    const out={};
+    for(const date of weekDates()) for(const {b,c} of containers(getDay(me,date))) for(const it of c.items)
+      if(it.bc&&it.bc.id!=null) (out[it.bc.id]||(out[it.bc.id]=[])).push({date,b,done:!!it.done});
+    return out;
+  }
+  function blockLabel(date,b){const dt=dateOf(date);return `${date===todayKey()?"Today":DOW3[dt.getDay()]} · ${BLOCKS.find(x=>x[0]===b)[1]}`}
+  function dueLabel(d){
+    if(!d) return "";
+    const tk=todayKey(); if(d<tk) return "Overdue";
+    if(d===tk) return "Due today";
+    if(d===key(addDays(new Date(),1))) return "Due tomorrow";
+    const dt=dateOf(d); return `Due ${DOW3[dt.getDay()]} ${MON[dt.getMonth()]} ${dt.getDate()}`;
+  }
+  function planOptions(){
+    const dates=tab==="today"?[todayKey(),...weekDates().filter(d=>d>todayKey())]:weekDates();
+    return `<option value="">Plan into a block…</option>`+dates.flatMap(d=>BLOCKS.map(([b])=>{
+      const blk=getDay(me,d).blocks[b], m=blk.split?null:blk.mode, off=m==="rest"||m==="family";
+      return `<option value="${d}|${b}"${off?" disabled":""}>${blockLabel(d,b)}${off?` (${TYPE_NAME[m]})`:""}</option>`})).join("");
+  }
+  function renderBC(){
+    const box=$("#bc"); if(!box) return;
+    const hide=tab==="staff"||ro()||bcState.status==="off"||!backend;
+    box.hidden=hide; if(hide) return;
+    const head=`<div class="bchead"><h2>Basecamp to-dos</h2>${bcState.status==="ready"?`<span class="bcacct">${esc(bcState.account)}</span><button class="linkbtn" id="bcRefresh">Refresh</button><button class="linkbtn" id="bcDisc">Disconnect</button>`:""}</div>`;
+    const msg=bcState.msg?`<p class="bcmsg" role="status">${esc(bcState.msg)}</p>`:"";
+    if(bcState.status==="loading"||bcState.status==="idle"){box.innerHTML=head+`<p class="bcmsg">Loading your Basecamp to-dos…</p>`;return}
+    if(bcState.status==="disconnected"||(bcState.status==="error"&&!bcState.items.length)){
+      box.innerHTML=head+msg+`<p class="bcintro">See the to-dos assigned to you in Basecamp, plan them into a block, and check them off here or there.</p><button class="btn primary" id="bcConnect">Connect Basecamp</button>`;return}
+    const planned=bcPlanned(), tk=todayKey();
+    const items=[...bcState.items].sort((a,b)=>(b.upNext?1:0)-(a.upNext?1:0)||((a.due_on||"9999")<(b.due_on||"9999")?-1:(a.due_on||"9999")>(b.due_on||"9999")?1:0));
+    const open=items.filter(i=>!planned[i.id]), sched=items.filter(i=>planned[i.id]);
+    const row=i=>{
+      const p=planned[i.id], due=dueLabel(i.due_on), late=i.due_on&&i.due_on<tk, canCheck=i.type==="todo";
+      return `<li class="bcitem" data-bc="${i.id}" draggable="true">
+        ${canCheck?`<input type="checkbox" data-bcact="done" id="bc-${i.id}" aria-label="Mark done in Basecamp"${bcState.busy[i.id]?" disabled":""}>`:`<span class="bccard" title="Basecamp card">▭</span>`}
+        <div class="bcmain"><a class="bctitle" href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.content||"(untitled)")}</a>
+          <div class="bcmeta">${i.upNext?`<span class="bcchip up">Up next</span>`:""}${due?`<span class="bcchip${late?" late":""}">${due}</span>`:""}<span>${esc(i.project||"")}${i.list?` · ${esc(i.list)}`:""}</span></div>
+          ${p?`<div class="bcplanned">Planned: ${p.map(x=>blockLabel(x.date,x.b)).join(", ")}</div>`:""}
+        </div>
+        <select class="bcplan" data-bcact="plan" aria-label="Plan into a block">${planOptions()}</select>
+      </li>`;
+    };
+    box.innerHTML=head+msg+(items.length?
+      `${open.length?`<ul class="bclist">${open.map(row).join("")}</ul>`:`<p class="bcmsg">Everything assigned to you is planned this week.</p>`}
+       ${sched.length?`<details class="bcsched"><summary>Planned this week (${sched.length})</summary><ul class="bclist">${sched.map(row).join("")}</ul></details>`:""}`
+      :`<p class="bcmsg">Nothing is assigned to you in Basecamp right now.</p>`);
+  }
+  function bcAddToBlock(item,date,b,h){
+    const exists=containers(getDay(me,date)).some(({b:bb,c})=>bb===b&&c.items.some(x=>x.bc&&x.bc.id===item.id));
+    if(exists){setStatus("That to-do is already in this block.");return}
+    dropInto(date,b,h,{id:uid(),kind:"task",text:item.content||"Basecamp to-do",done:false,bc:{id:item.id,url:item.url,project:item.project||"",type:item.type}});
+    saveDay(date); renderDay(date); renderBC();
+    setStatus(`Planned “${item.content}” for ${blockLabel(date,b)}`);
+  }
+  async function bcSetDone(id,done){
+    if(bcState.busy[id]) return; bcState.busy[id]=true;
+    try{
+      const j=await bcFetch("/api/basecamp/complete",{method:"POST",body:JSON.stringify({id,done})});
+      if(j.connected===false){bcState.status="disconnected";bcState.msg="Your Basecamp connection expired. Connect again to keep syncing check-offs."}
+      else{
+        if(done) bcState.items=bcState.items.filter(i=>i.id!==id);
+        setStatus(done?"Checked off in Basecamp":"Reopened in Basecamp");
+        if(!done) bcLoad(true);
+      }
+    }catch(e){setStatus(e.message||"Couldn't update Basecamp")}
+    delete bcState.busy[id]; renderBC();
+  }
+  function markPlannedDone(id,done){
+    for(const date of weekDates()){let ch=false;
+      for(const {c} of containers(getDay(me,date))) c.items.forEach(it=>{if(it.bc&&it.bc.id===id&&!!it.done!==done){it.done=done;ch=true}});
+      if(ch){saveDay(date);renderDay(date)}}
+  }
+  $("#bc").addEventListener("click",e=>{
+    const t=e.target;
+    if(t.id==="bcConnect") bcConnect();
+    else if(t.id==="bcRefresh"){bcState.msg="";bcLoad()}
+    else if(t.id==="bcDisc") bcDisconnect();
+  });
+  $("#bc").addEventListener("change",e=>{
+    const t=e.target, li=t.closest("[data-bc]"); if(!li) return;
+    const id=Number(li.dataset.bc), item=bcState.items.find(i=>i.id===id); if(!item) return;
+    if(t.dataset.bcact==="done"&&t.checked){markPlannedDone(id,true);bcSetDone(id,true)}
+    else if(t.dataset.bcact==="plan"&&t.value){const [d,b]=t.value.split("|");bcAddToBlock(item,d,b,0)}
+  });
+  $("#bc").addEventListener("dragstart",e=>{
+    const li=e.target.closest&&e.target.closest("[data-bc]"); if(!li) return;
+    dragBc=bcState.items.find(i=>i.id===Number(li.dataset.bc))||null;
+    try{e.dataTransfer.setData("text/plain",li.dataset.bc);e.dataTransfer.effectAllowed="copy"}catch(_){}
+  });
+  $("#bc").addEventListener("dragend",()=>{dragBc=null;weekEl.querySelectorAll(".drop").forEach(n=>n.classList.remove("drop"))});
+  window.addEventListener("focus",()=>{ if(bcState.status==="ready") bcLoad(true) });
 
   /* ---------- priorities ---------- */
   function addPriority(){

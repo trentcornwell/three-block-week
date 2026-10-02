@@ -160,6 +160,29 @@ ul.sub{margin-left:6px;padding-left:14px;border-left:2px solid var(--b-line)}
 [data-mode="church"] .it.brk .bk-ic,[data-mode="education"] .it.brk .bk-ic{border-top-color:transparent}
 .brkbtn{flex:none;border:1px dashed var(--b-line);background:transparent;color:var(--b-muted);border-radius:5px;font-size:.66rem;font-weight:600;padding:2px 6px;white-space:nowrap}
 .brkbtn:hover{color:var(--b-ink);border-color:var(--b-ink)}
+/* Basecamp tray */
+.bc .bchead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.bc .bchead h2{margin-right:auto}
+.bcacct{font-size:.78rem;color:var(--muted)}
+.bcintro,.bcmsg{margin:0;font-size:.86rem;color:var(--muted);max-width:62ch}
+.bc .btn.primary{align-self:flex-start}
+.bclist{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px}
+.bcitem{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);min-width:0}
+.bcitem input[type=checkbox]{flex:none;width:16px;height:16px;margin:2px 0 0;accent-color:var(--accent)}
+.bccard{flex:none;width:16px;text-align:center;color:var(--muted);font-size:.8rem}
+.bcmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.bctitle{color:var(--ink);font-weight:600;font-size:.88rem;text-decoration:none;overflow-wrap:anywhere}
+.bctitle:hover{text-decoration:underline}
+.bcmeta{display:flex;flex-wrap:wrap;gap:4px 8px;font-size:.72rem;color:var(--muted)}
+.bcchip{font-weight:600;border:1px solid var(--line-strong);border-radius:4px;padding:0 5px}
+.bcchip.late{color:var(--warn);border-color:var(--warn);background:var(--warn-soft)}
+.bcchip.up{color:var(--accent);border-color:var(--accent)}
+.bcplanned{font-size:.72rem;color:var(--rest);font-weight:600}
+.bcplan{flex:none;max-width:9.5rem;font:inherit;font-size:.74rem;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);padding:3px 4px}
+.bcsched summary{cursor:pointer;font-size:.84rem;font-weight:600;color:var(--muted);margin-bottom:6px}
+.bclink{flex:none;font:700 .6rem var(--mono);letter-spacing:.04em;color:var(--rest);background:color-mix(in srgb,var(--rest) 12%,transparent);border:1px solid color-mix(in srgb,var(--rest) 45%,transparent);border-radius:4px;padding:1px 4px;text-decoration:none;margin-top:2px}
+[data-mode="church"] .bclink,[data-mode="education"] .bclink,[data-mode="family"] .bclink,[data-mode="rest"] .bclink{color:var(--b-ink);background:transparent;border-color:var(--b-ink)}
+@media (max-width:560px){.bcitem{flex-wrap:wrap}.bcplan{max-width:none;width:100%}}
 .legend{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:.82rem;color:var(--muted)}
 .legend span{display:flex;align-items:center;gap:6px}
 .legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
@@ -376,6 +399,8 @@ td.today-col{background:color-mix(in srgb,var(--accent) 6%,transparent)}
     </div>
   </section>
 
+  <section class="panel bc" id="bc" aria-label="Basecamp to-dos" hidden></section>
+
   <section class="panel" id="tools" aria-label="Week tools">
     <div class="toolbar">
       <button class="btn" id="copyLast">Copy last week</button>
@@ -400,7 +425,7 @@ td.today-col{background:color-mix(in srgb,var(--accent) 6%,transparent)}
     <span><i style="background:var(--church)"></i>Church Gathering</span>
     <span><i style="background:var(--family);box-shadow:0 0 0 1px var(--line-strong)"></i>Family</span>
     <span><i style="background:var(--rest)"></i>Rest</span>
-    <span>Tap an item to edit or move it. On a computer you can also drag it to another block. Use “+1 hr break” for an errand or time away.</span>
+    <span>Tap an item to edit or move it. On a computer you can also drag it, or a Basecamp to-do, into a block. Use “+1 hr break” for an errand or time away.</span>
   </div>
 
   <main class="week" id="week"></main>
