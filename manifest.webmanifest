@@ -1,0 +1,11 @@
+{
+  "name": "Three-Block Week",
+  "short_name": "3-Block Week",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e9ecee",
+  "theme_color": "#e9ecee",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
