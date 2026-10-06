@@ -293,7 +293,7 @@
     if(!backend||busyK[k]||!pend[k]) return;
     const w=pend[k]; delete pend[k]; busyK[k]=true;
     let failed=false;
-    try{await w();setStatus(backend.label)}
+    try{await w();setStatus(backend.label);if(/^(day:|doc:weeks\/)/.test(k))pubSoon(k.startsWith("day:")?k.slice(4):k.slice(10))}
     catch(e){
       failed=true;
       setStatus("Couldn't save. Check your connection — trying again shortly.");
@@ -438,7 +438,7 @@
     try{await start(session)}catch(e){showGate("error")}
   }
   async function start(session){
-    const u=session.user; me=u.id; viewing=me;
+    const u=session.user; me=u.id; viewing=me; curSession=session;
     const {data:ok,error}=await sb.rpc("is_staff");
     if(error) throw error;
     if(!ok){showGate("notstaff",u.email);return}
@@ -457,6 +457,7 @@
     watchCal();
     flushAll();
     bcLoad();
+    pubLoad();
   }
   $("#gGoogle").onclick=()=>signInGoogle();
   $("#gEmailForm").addEventListener("submit",async e=>{
@@ -669,10 +670,11 @@
 
   /* ---------- Basecamp ---------- */
   const bcState={status:"idle",items:[],account:"",msg:"",busy:{}};
-  let bcTimer=null, dragBc=null;
+  let bcTimer=null, dragBc=null, curSession=null;
   async function bcFetch(path,opts){
     const {data:{session}}=await sb.auth.getSession();
     if(!session) throw new Error("signed out");
+    curSession=session;
     const r=await fetch(path,Object.assign({},opts,{headers:Object.assign({"Content-Type":"application/json",Authorization:"Bearer "+session.access_token},(opts&&opts.headers)||{})}));
     const j=await r.json().catch(()=>({}));
     if(!r.ok) throw Object.assign(new Error(j.error||"request failed"),{status:r.status,body:j});
@@ -733,6 +735,55 @@
       const blk=getDay(me,d).blocks[b], m=blk.split?null:blk.mode, off=m==="rest"||m==="family";
       return `<option value="${d}|${b}"${off?" disabled":""}>${blockLabel(d,b)}${off?` (${TYPE_NAME[m]})`:""}</option>`})).join("");
   }
+  /* ---------- weekly plan posted to a Basecamp project ---------- */
+  const pub={settings:null,projects:null,busy:false,msg:"",weeks:{},timer:null};
+  async function pubLoad(){
+    if(!sb||!backend) return;
+    const {data,error}=await sb.from("publish_settings").select("*").eq("id",1).maybeSingle();
+    pub.settings=error?null:data; renderBC();
+  }
+  function pubSoon(date){
+    if(!pub.settings||!pub.settings.enabled) return;
+    pub.weeks[key(mondayOf(dateOf(date)))]=1;
+    clearTimeout(pub.timer); pub.timer=setTimeout(pubRunQueued,60000);
+  }
+  async function pubRunQueued(){
+    const weeks=Object.keys(pub.weeks); pub.weeks={};
+    for(const w of weeks){try{await bcFetch("/api/basecamp/publish",{method:"POST",body:JSON.stringify({action:"run",week:w})})}catch(e){}}
+  }
+  window.addEventListener("pagehide",()=>{ if(Object.keys(pub.weeks).length){const w=Object.keys(pub.weeks); pub.weeks={};
+    w.forEach(week=>fetch("/api/basecamp/publish",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json",Authorization:"Bearer "+(curSession&&curSession.access_token)},body:JSON.stringify({action:"run",week})}).catch(()=>{}))}});
+  async function pubAction(body){
+    pub.busy=true; renderBC();
+    try{
+      const j=await bcFetch("/api/basecamp/publish",{method:"POST",body:JSON.stringify(body)});
+      if(body.action==="projects"){ if(j.connected===false){pub.msg="Connect Basecamp first."} else {pub.projects=j.projects||[]; if(!pub.projects.length) pub.msg="None of your Basecamp projects has Docs & Files turned on."} }
+      else if(j.result&&j.result.error||j.error){pub.msg=(j.result&&j.result.error)||j.error}
+      else if(body.action==="setup"){pub.msg="Done. This week's plan is now in Basecamp.";pub.projects=null}
+      else if(body.action==="off"){pub.msg="Stopped posting to Basecamp."}
+      else if(body.action==="run"){pub.msg=j.unchanged?"Basecamp is already up to date.":j.skipped?"Not posted: "+j.skipped+".":"Updated in Basecamp."}
+    }catch(e){pub.msg=e.message||"Couldn't reach Basecamp."}
+    pub.busy=false; await pubLoad();
+  }
+  function pubHTML(){
+    const s=pub.settings, on=s&&s.enabled, dis=pub.busy?" disabled":"";
+    const doc=on&&s.docs&&s.docs[wsKey()];
+    const when=s&&s.last_run?new Date(s.last_run).toLocaleString([],{weekday:"short",hour:"numeric",minute:"2-digit"}):"";
+    let body;
+    if(pub.projects){
+      const pick=pub.projects.find(p=>/church admin/i.test(p.name))||pub.projects[0];
+      body=`<label class="pubpick">Project <select id="pubProject">${pub.projects.map(p=>`<option value="${p.id}"${pick&&p.id===pick.id?" selected":""}>${esc(p.name)}</option>`).join("")}</select></label>
+        <div class="pubbtns"><button class="btn primary" id="pubSetup"${dis}>Post the staff week here</button><button class="linkbtn" id="pubCancel">Cancel</button></div>
+        <p class="pubnote">Creates one document per week in that project's Docs &amp; Files, posted from your Basecamp account. It shows each person's blocks, objectives and events. Tasks stay private to the planner.</p>`;
+    }else if(on){
+      body=`<p class="pubstat">Posting the staff week to <strong>${esc(s.project_name||"Basecamp")}</strong>${s.publisher_name?` · set up by ${esc(s.publisher_name)}`:""}.${when?` Last checked ${esc(when)}.`:""}</p>
+        ${s.last_error?`<p class="bcmsg late">${esc(s.last_error)}</p>`:""}
+        <div class="pubbtns">${doc&&doc.url?`<a class="btn" href="${esc(doc.url)}" target="_blank" rel="noopener">Open this week in Basecamp</a>`:""}<button class="btn" id="pubRun"${dis}>Update now</button><button class="linkbtn" id="pubChange"${dis}>Change project</button><button class="linkbtn" id="pubOff"${dis}>Stop</button></div>`;
+    }else{
+      body=`<p class="pubnote">Put everyone's week in a Basecamp project, like Church Administration, as a document that updates itself.</p><button class="btn" id="pubChange"${dis}>Choose a project…</button>`;
+    }
+    return `<div class="pub"><h3>Staff week in Basecamp</h3>${pub.msg?`<p class="bcmsg" role="status">${esc(pub.msg)}</p>`:""}${pub.busy?`<p class="bcmsg">Working…</p>`:""}${body}</div>`;
+  }
   function renderBC(){
     const box=$("#bc"); if(!box) return;
     const hide=tab==="staff"||ro()||bcState.status==="off"||!backend;
@@ -759,7 +810,7 @@
     box.innerHTML=head+msg+(items.length?
       `${open.length?`<ul class="bclist">${open.map(row).join("")}</ul>`:`<p class="bcmsg">Everything assigned to you is planned this week.</p>`}
        ${sched.length?`<details class="bcsched"><summary>Planned this week (${sched.length})</summary><ul class="bclist">${sched.map(row).join("")}</ul></details>`:""}`
-      :`<p class="bcmsg">Nothing is assigned to you in Basecamp right now.</p>`);
+      :`<p class="bcmsg">Nothing is assigned to you in Basecamp right now.</p>`)+pubHTML();
   }
   function bcAddToBlock(item,date,b,h){
     const exists=containers(getDay(me,date)).some(({b:bb,c})=>bb===b&&c.items.some(x=>x.bc&&x.bc.id===item.id));
@@ -791,6 +842,11 @@
     if(t.id==="bcConnect") bcConnect();
     else if(t.id==="bcRefresh"){bcState.msg="";bcLoad()}
     else if(t.id==="bcDisc") bcDisconnect();
+    else if(t.id==="pubChange"){pub.msg="";pubAction({action:"projects"})}
+    else if(t.id==="pubCancel"){pub.projects=null;pub.msg="";renderBC()}
+    else if(t.id==="pubSetup"){const v=$("#pubProject").value;pub.msg="";pubAction({action:"setup",project:v})}
+    else if(t.id==="pubRun"){pub.msg="";pubAction({action:"run",week:wsKey(),force:true})}
+    else if(t.id==="pubOff"){pub.msg="";pubAction({action:"off"})}
   });
   $("#bc").addEventListener("change",e=>{
     const t=e.target, li=t.closest("[data-bc]"); if(!li) return;

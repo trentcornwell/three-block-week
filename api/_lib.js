@@ -107,15 +107,41 @@ async function loadLink(user) {
   return link;
 }
 
-async function bc(link, method, path) {
-  const r = await fetch(`https://3.basecampapi.com/${link.account}${path}`, {
+async function bc(link, method, path, body) {
+  const url = /^https:/.test(path) ? path : `https://3.basecampapi.com/${link.account}${path}`;
+  const r = await fetch(url, {
     method,
-    headers: { Authorization: `Bearer ${link.access}`, "User-Agent": UA, Accept: "application/json" }
+    headers: { Authorization: `Bearer ${link.access}`, "User-Agent": UA, Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) },
+    body: body ? JSON.stringify(body) : undefined
   });
+  if (r.status === 404) throw Object.assign(new Error("basecamp 404"), { status: 404 });
   if (r.status === 401) throw Object.assign(new Error("basecamp auth"), { status: 401 });
   if (r.status === 429) throw Object.assign(new Error("basecamp busy"), { status: 429 });
   if (!r.ok) throw Object.assign(new Error(`basecamp ${r.status}`), { status: r.status });
   return r.status === 204 ? null : r.json().catch(() => null);
+}
+
+// Key the weekly-plan publisher uses to read the staff week (derived here; never leaves the server).
+const publishKey = () => b64u(key("publish-v1"));
+
+// Calls a database function. With a user it runs as that user; without one it runs as the public role.
+async function rpc(fn, args, user) {
+  const headers = { apikey: SB_KEY, "Content-Type": "application/json" };
+  if (user) headers.Authorization = `Bearer ${user.jwt}`;
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers, body: JSON.stringify(args || {}) });
+  const text = await r.text();
+  if (!r.ok) throw Object.assign(new Error(`database ${r.status}: ${text.slice(0, 200)}`), { status: r.status });
+  return text ? JSON.parse(text) : null;
+}
+
+// Refreshes a link's access token when it is close to expiring. Returns true if it changed.
+async function refreshIfNeeded(link) {
+  if (link.exp && link.exp - Date.now() >= 2 * 24 * 3600 * 1000) return false;
+  const t = await tokenRequest({ grant_type: "refresh_token", refresh_token: link.refresh });
+  link.access = t.access_token;
+  if (t.refresh_token) link.refresh = t.refresh_token;
+  link.exp = Date.now() + (t.expires_in || 1209600) * 1000;
+  return true;
 }
 
 function send(res, status, obj) {
@@ -125,4 +151,4 @@ function send(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
-module.exports = { SB_URL, LAUNCHPAD, BC_ID, UA, configured, redirectUri, origin, seal, open, signState, readState, planUser, rest, tokenRequest, loadLink, bc, send };
+module.exports = { SB_URL, LAUNCHPAD, BC_ID, UA, configured, redirectUri, origin, seal, open, signState, readState, planUser, rest, tokenRequest, loadLink, bc, send, publishKey, rpc, refreshIfNeeded };
