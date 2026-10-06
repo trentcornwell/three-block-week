@@ -84,33 +84,138 @@ async function getLink(data, s) {
   return { link, newBlob: changed ? L.seal(link) : null };
 }
 
-// Creates or updates the document for one week. Returns a short result.
+// ---------- Schedule entries: one per block, plus one per event ----------
+const SPAN = { m: ["08:00", "12:00"], a: ["12:00", "16:00"], e: ["16:00", "20:00"] };
+function nyISO(date, hm) {
+  // Offset for that day in New York (handles daylight saving).
+  const probe = new Date(`${date}T12:00:00Z`);
+  const off = (new Intl.DateTimeFormat("en-US", { timeZone: TZ, timeZoneName: "longOffset" }).formatToParts(probe).find(x => x.type === "timeZoneName") || {}).value || "GMT-05:00";
+  const m = /GMT([+-]\d{2}):?(\d{2})?/.exec(off);
+  return `${date}T${hm}:00${m ? `${m[1]}:${m[2] || "00"}` : "-05:00"}`;
+}
+function addHour(hm) { const [h, m] = hm.split(":").map(Number); const t = Math.min(h * 60 + m + 60, 23 * 60 + 59); return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; }
+function first(name) { return String(name || "Staff").trim(); }
+
+function desiredEntries(ws, data, peopleIds) {
+  const want = {};
+  const names = Object.fromEntries((data.people || []).map(p => [p.id, first(p.name || p.email)]));
+  for (const d of data.days || []) {
+    if (!names[d.user_id]) continue;
+    const date = String(d.date).slice(0, 10), day = d.data || {}, who = names[d.user_id];
+    const pids = peopleIds[d.user_id] ? [peopleIds[d.user_id]] : [];
+    for (const [b, bl] of BLOCKS) {
+      const blk = (day.blocks || {})[b]; if (!blk) continue;
+      const conts = blk.split ? (blk.halves || []) : [blk];
+      const modes = conts.map(c => c.mode && TYPE[c.mode]).filter(Boolean);
+      const objs = conts.flatMap(c => (c.items || []).filter(i => i.kind === "obj").map(i => i.text));
+      if (modes.length) {
+        want[`b:${d.user_id}:${date}:${b}`] = {
+          summary: `${who} · ${bl}: ${modes.join(" / ")}`,
+          starts_at: nyISO(date, SPAN[b][0]), ends_at: nyISO(date, SPAN[b][1]),
+          description: objs.length ? `<div><strong>Objectives</strong></div><ul>${objs.map(o => `<li>${esc(o)}</li>`).join("")}</ul>` : "",
+          participant_ids: pids
+        };
+      }
+      for (const c of conts) for (const i of (c.items || []).filter(x => x.kind === "event")) {
+        const st = i.time || SPAN[b][0], en = i.time ? addHour(i.time) : SPAN[b][1];
+        want[`e:${d.user_id}:${i.id}`] = { summary: `${who} · ${i.text}`, starts_at: nyISO(date, st), ends_at: nyISO(date, en), description: "", participant_ids: pids };
+      }
+    }
+  }
+  return want;
+}
+const sig = e => crypto.createHash("sha256").update(JSON.stringify(e)).digest("hex").slice(0, 12);
+
+async function basecampPeopleIds(link, s, data) {
+  const out = {};
+  try {
+    const ppl = await L.bc(link, "GET", `/projects/${s.bucket_id}/people.json`);
+    const byEmail = Object.fromEntries((ppl || []).map(p => [String(p.email_address || "").toLowerCase(), p.id]));
+    for (const p of data.people || []) { const id = byEmail[String(p.email || "").toLowerCase()]; if (id) out[p.id] = id; }
+  } catch (e) { /* participants are optional */ }
+  return out;
+}
+
+async function scheduleId(link, s) {
+  const p = await L.bc(link, "GET", `/projects/${s.bucket_id}.json`);
+  const d = (p.dock || []).find(x => x.name === "schedule" && x.enabled !== false);
+  return d ? d.id : null;
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Brings the project's Schedule in line with the planner. Saves progress as it goes back into `have`.
+async function syncSchedule(link, s, want, have, deadline) {
+  const sched = await scheduleId(link, s);
+  if (!sched) return { note: "That project's Schedule is turned off, so only the document was updated." };
+  let n = 0;
+  const call = async (m, path, body) => { if (Date.now() > deadline) throw Object.assign(new Error("later"), { code: "later" }); n++; if (n > 1) await sleep(220); return L.bc(link, m, path, body); };
+  try {
+    for (const [k, e] of Object.entries(want)) {
+      const sg = sig(e), cur = have[k];
+      if (cur && cur.s === sg) continue;
+      const body = { summary: e.summary, starts_at: e.starts_at, ends_at: e.ends_at, description: e.description, participant_ids: e.participant_ids, all_day: false, notify: false };
+      let out = null;
+      if (cur && cur.id) {
+        try { out = await call("PUT", `/buckets/${s.bucket_id}/schedule_entries/${cur.id}.json`, body); }
+        catch (err) { if (err.status !== 404 && err.status !== 403) throw err; }
+      }
+      if (!out) out = await call("POST", `/buckets/${s.bucket_id}/schedules/${sched}/entries.json`, body);
+      have[k] = { id: out.id, s: sg };
+    }
+    for (const k of Object.keys(have)) {
+      if (want[k]) continue;
+      try { await call("PUT", `/buckets/${s.bucket_id}/recordings/${have[k].id}/status/trashed.json`); }
+      catch (err) { if (err.status !== 404 && err.status !== 403) throw err; }
+      delete have[k];
+    }
+  } catch (err) {
+    if (err.code === "later" || err.status === 429) return { partial: true };
+    throw err;
+  }
+  return {};
+}
+
+// Creates or updates the document and the schedule entries for one week.
 async function publishWeek(ws, force) {
+  const started = Date.now();
   const key = L.publishKey();
   const data = await L.rpc("publish_data", { p_key: key, p_week: ws });
   const s = data.settings || {};
   if (!s.enabled) return { skipped: "off" };
-  let newBlob = null, doc = (s.docs || {})[ws] || null, err = null;
+  const prev = (s.docs || {})[ws] || null;
+  let newBlob = null, doc = prev ? { ...prev, entries: { ...(prev.entries || {}) } } : { entries: {} }, err = null, info = {};
   try {
     const got = await getLink(data, s); newBlob = got.newBlob; const link = got.link;
     if (String(link.account) !== String(s.account_id)) throw new Error("Your Basecamp account changed. Set up posting again.");
     const body = render(ws, data);
     const hash = crypto.createHash("sha256").update(body).digest("hex").slice(0, 16);
     const title = `Staff week · ${rangeTitle(ws)}`;
-    if (doc && doc.hash === hash && !force) { await L.rpc("publish_save", { p_key: key, p_week: null, p_doc: null, p_error: null, p_blob: newBlob }); return { unchanged: true, url: doc.url }; }
-    const content = body;
-    let out = null;
-    if (doc && doc.id) {
-      try { out = await L.bc(link, "PUT", `/buckets/${s.bucket_id}/documents/${doc.id}.json`, { title, content }); }
-      catch (e) { if (e.status !== 404 && e.status !== 403) throw e; out = null; }
+    if (!(doc.id && doc.hash === hash && !force)) {
+      let out = null;
+      if (doc.id) {
+        try { out = await L.bc(link, "PUT", `/buckets/${s.bucket_id}/documents/${doc.id}.json`, { title, content: body }); }
+        catch (e) { if (e.status !== 404 && e.status !== 403) throw e; out = null; }
+      }
+      if (!out) out = await L.bc(link, "POST", `/buckets/${s.bucket_id}/vaults/${s.vault_id}/documents.json`, { title, content: body, status: "active" });
+      doc.id = out.id; doc.url = out.app_url; doc.hash = hash; doc.at = new Date().toISOString();
     }
-    if (!out) out = await L.bc(link, "POST", `/buckets/${s.bucket_id}/vaults/${s.vault_id}/documents.json`, { title, content, status: "active" });
-    doc = { id: out.id, url: out.app_url, hash, at: new Date().toISOString() };
+    // Schedule: skip the Basecamp calls entirely when nothing changed since last time.
+    const ids = await basecampPeopleIds(link, s, data);
+    const want = desiredEntries(ws, data, ids);
+    const wantHash = sig(Object.fromEntries(Object.entries(want).map(([k, e]) => [k, sig(e)])));
+    if (doc.sched !== wantHash || force) {
+      try { info = await syncSchedule(link, s, want, doc.entries, started + 45000); }
+      catch (e) { info = { note: `Couldn't update the Schedule (Basecamp said ${e.status || e.message}). Will try again.` }; }
+      if (!info.partial && !info.note) doc.sched = wantHash; else delete doc.sched;
+    }
   } catch (e) {
     err = e.code === "nolink" || !e.status ? e.message : e.status === 403 || e.status === 404 ? "Basecamp wouldn't let this account post to that project. Check access, or set up posting again." : `Basecamp said ${e.status}. Will try again.`;
   }
-  await L.rpc("publish_save", { p_key: key, p_week: err ? null : ws, p_doc: err ? null : doc, p_error: err, p_blob: newBlob });
-  return err ? { error: err } : { url: doc.url };
+  // Always save entry ids we created, even after an error, so nothing is duplicated next time.
+  const save = doc.id || Object.keys(doc.entries).length ? doc : null;
+  await L.rpc("publish_save", { p_key: key, p_week: save ? ws : null, p_doc: save, p_error: err || info.note || null, p_blob: newBlob });
+  if (err) return { error: err };
+  return { url: doc.url, ...(info.partial ? { more: true } : {}), ...(info.note ? { note: info.note } : {}) };
 }
 
 async function listProjects(link) {

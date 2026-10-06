@@ -757,12 +757,14 @@
   async function pubAction(body){
     pub.busy=true; renderBC();
     try{
-      const j=await bcFetch("/api/basecamp/publish",{method:"POST",body:JSON.stringify(body)});
+      let j=await bcFetch("/api/basecamp/publish",{method:"POST",body:JSON.stringify(body)});
+      for(let i=0;i<6&&((j.result&&j.result.more)||j.more);i++){pub.msg="Still adding to the Basecamp Schedule…";renderBC();
+        j=Object.assign(await bcFetch("/api/basecamp/publish",{method:"POST",body:JSON.stringify({action:"run",week:wsKey()})}),body.action==="setup"?{result:{}}:{})}
       if(body.action==="projects"){ if(j.connected===false){pub.msg="Connect Basecamp first."} else {pub.projects=j.projects||[]; if(!pub.projects.length) pub.msg="None of your Basecamp projects has Docs & Files turned on."} }
       else if(j.result&&j.result.error||j.error){pub.msg=(j.result&&j.result.error)||j.error}
       else if(body.action==="setup"){pub.msg="Done. This week's plan is now in Basecamp.";pub.projects=null}
       else if(body.action==="off"){pub.msg="Stopped posting to Basecamp."}
-      else if(body.action==="run"){pub.msg=j.unchanged?"Basecamp is already up to date.":j.skipped?"Not posted: "+j.skipped+".":"Updated in Basecamp."}
+      else if(body.action==="run"){pub.msg=j.skipped?"Not posted: "+j.skipped+".":j.note||"Updated the document and Schedule in Basecamp."}
     }catch(e){pub.msg=e.message||"Couldn't reach Basecamp."}
     pub.busy=false; await pubLoad();
   }
@@ -775,7 +777,7 @@
       const pick=pub.projects.find(p=>/church admin/i.test(p.name))||pub.projects[0];
       body=`<label class="pubpick">Project <select id="pubProject">${pub.projects.map(p=>`<option value="${p.id}"${pick&&p.id===pick.id?" selected":""}>${esc(p.name)}</option>`).join("")}</select></label>
         <div class="pubbtns"><button class="btn primary" id="pubSetup"${dis}>Post the staff week here</button><button class="linkbtn" id="pubCancel">Cancel</button></div>
-        <p class="pubnote">Creates one document per week in that project's Docs &amp; Files, posted from your Basecamp account. It shows each person's blocks, objectives and events. Tasks stay private to the planner.</p>`;
+        <p class="pubnote">Posts one document per week to that project's Docs &amp; Files and puts every block and event on its Schedule, from your Basecamp account. Tasks stay private to the planner.</p>`;
     }else if(on){
       body=`<p class="pubstat">Posting the staff week to <strong>${esc(s.project_name||"Basecamp")}</strong>${s.publisher_name?` · set up by ${esc(s.publisher_name)}`:""}.${when?` Last checked ${esc(when)}.`:""}</p>
         ${s.last_error?`<p class="bcmsg late">${esc(s.last_error)}</p>`:""}

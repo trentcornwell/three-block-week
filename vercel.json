@@ -42,5 +42,10 @@
       "path": "/api/basecamp/publish",
       "schedule": "0 10 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "api/basecamp/publish.js": {
+      "maxDuration": 60
+    }
+  }
 }
