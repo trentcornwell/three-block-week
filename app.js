@@ -491,7 +491,9 @@
     const {data:ps}=await sb.from("profiles").select("id,email,name,avatar_url");
     (ps||[]).forEach(p=>{profileMap[p.id]=p}); people=(ps||[]).map(p=>p.id);
     user={profiles:async ids=>{const o={};(Array.isArray(ids)?ids:[ids]).forEach(id=>{const p=profileMap[id]||{};o[id]={name:p.name||p.email||"",avatarUrl:p.avatar_url||""}});return o}};
-    backend={label:"Saved · visible to staff"};
+    const solo=people.length<2;
+    backend={label:solo?"Saved":"Saved · visible to staff"};
+    $("#tabStaff").hidden=solo;
     $("#acct").textContent=u.email;
     showGate(null);
     startRealtime();
@@ -835,9 +837,9 @@
         ${s.last_error?`<p class="bcmsg late">${esc(s.last_error)}</p>`:""}
         <div class="pubbtns">${doc&&doc.url?`<a class="btn" href="${esc(doc.url)}" target="_blank" rel="noopener">Open this week in Basecamp</a>`:""}<button class="btn" id="pubRun"${dis}>Update now</button><button class="linkbtn" id="pubChange"${dis}>Change project</button><button class="linkbtn" id="pubOff"${dis}>Stop</button></div>`;
     }else{
-      body=`<p class="pubnote">Put everyone's week in a Basecamp project, like Church Administration, as a document that updates itself.</p><button class="btn" id="pubChange"${dis}>Choose a project…</button>`;
+      body=`<p class="pubnote">Put what you tick <b>BC</b> on onto a Basecamp project's Schedule, plus a weekly summary document.</p><button class="btn" id="pubChange"${dis}>Choose a project…</button>`;
     }
-    return `<div class="pub"><h3>Staff week in Basecamp</h3>${pub.msg?`<p class="bcmsg" role="status">${esc(pub.msg)}</p>`:""}${pub.busy?`<p class="bcmsg">Working…</p>`:""}${body}</div>`;
+    return `<div class="pub"><h3>Week in Basecamp</h3>${pub.msg?`<p class="bcmsg" role="status">${esc(pub.msg)}</p>`:""}${pub.busy?`<p class="bcmsg">Working…</p>`:""}${body}</div>`;
   }
   function renderBC(){
     const box=$("#bc"); if(!box) return;
