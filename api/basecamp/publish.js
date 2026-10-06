@@ -27,51 +27,42 @@ function rangeTitle(ws) {
 }
 const byTime = list => [...list.filter(i => i.time).sort((x, y) => (x.time < y.time ? -1 : 1)), ...list.filter(i => !i.time)];
 
+// What each person chose to share: blocks and items they checked "BC" on, in time order.
+function sharedFor(day) {
+  const out = [];
+  for (const [b, bl] of BLOCKS) {
+    const blk = (day.blocks || {})[b]; if (!blk) continue;
+    const conts = blk.split ? (blk.halves || []) : [blk];
+    const modes = conts.map(c => c.mode && TYPE[c.mode]).filter(Boolean);
+    if (blk.share && modes.length) out.push({ key: `b:${b}`, b, bl, kind: "block", text: `${bl}: ${modes.join(" / ")}` });
+    for (const c of conts) for (const i of c.items || []) {
+      if (i.share && (i.kind === "event" || i.kind === "obj" || i.kind === "task" || !i.kind)) out.push({ key: `i:${i.id}`, b, bl, kind: i.kind || "task", text: i.text, time: i.kind === "event" ? i.time : null });
+      if (i.kind === "obj") for (const t of i.tasks || []) if (t.share) out.push({ key: `i:${t.id}`, b, bl, kind: "task", text: t.text, time: null });
+    }
+  }
+  return out;
+}
+
 // Builds the Basecamp document body. Basecamp allows only simple tags (div, h1, strong, em, br, ul, ol, li, blockquote, a).
 function render(ws, data) {
   const days = {}; for (const d of data.days || []) (days[d.user_id] || (days[d.user_id] = {}))[String(d.date).slice(0, 10)] = d.data;
-  const pri = {}; for (const w of data.weeks || []) pri[w.user_id] = (w.data && w.data.priorities) || [];
   const dates = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
-  const people = (data.people || []).filter(p => days[p.id] || (pri[p.id] || []).length);
-  let html = `<div><em>Each person's three blocks for every day this week, with their objectives and events. Personal tasks stay in the planner. Open the planner to make changes: <a href="https://three-block-week.vercel.app">three-block-week.vercel.app</a></em></div>`;
-  if (!people.length) return html + `<div><br>Nobody has planned this week yet.</div>`;
-  for (const p of people) {
-    const mine = days[p.id] || {};
-    const counts = {};
-    const lines = [];
+  let html = `<div><em>What each staff member chose to share from their week. Open the planner to make changes: <a href="https://three-block-week.vercel.app">three-block-week.vercel.app</a></em></div>`;
+  let any = false;
+  for (const p of data.people || []) {
+    const mine = days[p.id] || {}, lines = [];
     for (const k of dates) {
-      const day = mine[k]; if (!day || !day.blocks) continue;
-      const parts = [], notes = [];
-      for (const [b, bl] of BLOCKS) {
-        const blk = day.blocks[b] || {};
-        const conts = blk.split ? (blk.halves || []) : [blk];
-        const names = conts.map(c => c.mode && TYPE[c.mode]).filter(Boolean);
-        conts.forEach(c => { if (c.mode) counts[c.mode] = (counts[c.mode] || 0) + (blk.split ? 0.5 : 1); });
-        if (names.length) parts.push(`${bl}: ${names.join(" / ")}`);
-        for (const c of conts) {
-          const items = byTime((c.items || []).filter(i => i.kind === "event" || i.kind === "obj" || i.kind === "break"));
-          for (const i of items) {
-            const t = i.time ? `${fmtTime(i.time)} ` : "";
-            if (i.kind === "event") notes.push(`${bl}: ${t}${esc(i.text)}`);
-            else if (i.kind === "break") notes.push(`${bl}: Break (${esc(i.text || "errand")})`);
-            else {
-              const n = (i.tasks || []).length, done = (i.tasks || []).filter(x => x.done).length;
-              notes.push(`${bl}: <strong>${esc(i.text)}</strong>${n ? ` (${done}/${n} done)` : ""}`);
-            }
-          }
-        }
-      }
-      if (!parts.length && !notes.length) continue;
-      lines.push(`<li><strong>${label(k)}</strong> — ${parts.join(" · ") || "Not planned"}${notes.length ? `<ul>${notes.map(n => `<li>${n}</li>`).join("")}</ul>` : ""}</li>`);
+      const day = mine[k]; if (!day) continue;
+      const items = sharedFor(day); if (!items.length) continue;
+      lines.push(`<li><strong>${label(k)}</strong><ul>${items.map(x => `<li>${x.kind === "block" ? `<strong>${esc(x.text)}</strong> (${HRS[x.b]})` : `${x.bl}: ${x.time ? fmtTime(x.time) + " " : ""}${esc(x.text)}`}</li>`).join("")}</ul></li>`);
     }
-    const tally = ["rest", "family", "office", "remote", "education", "church"].filter(m => counts[m]).map(m => `${TYPE[m]} ${counts[m]}`).join(" · ");
-    html += `<h1>${esc(p.name || p.email || "Staff member")}</h1>`;
-    if ((pri[p.id] || []).length) html += `<div><strong>Priorities this week</strong></div><ol>${pri[p.id].map(x => `<li>${esc(x.text)}</li>`).join("")}</ol>`;
-    if (tally) html += `<div><em>Blocks: ${tally}</em></div>`;
-    html += lines.length ? `<ul>${lines.join("")}</ul>` : `<div>Nothing planned yet.</div>`;
+    if (!lines.length) continue;
+    any = true;
+    html += `<h1>${esc(p.name || p.email || "Staff member")}</h1><ul>${lines.join("")}</ul>`;
   }
-  return html;
+  return any ? html : html + `<div><br>Nothing has been shared for this week yet.</div>`;
 }
+const HRS = { m: "8 AM – 12 PM", a: "12 – 4 PM", e: "4 – 8 PM" };
 
 async function getLink(data, s) {
   if (!data.blob) throw Object.assign(new Error(`${s.publisher_name || "The person who set this up"} needs to reconnect Basecamp in the planner.`), { code: "nolink" });
@@ -101,25 +92,12 @@ function desiredEntries(ws, data, peopleIds) {
   const names = Object.fromEntries((data.people || []).map(p => [p.id, first(p.name || p.email)]));
   for (const d of data.days || []) {
     if (!names[d.user_id]) continue;
-    const date = String(d.date).slice(0, 10), day = d.data || {}, who = names[d.user_id];
+    const date = String(d.date).slice(0, 10), who = names[d.user_id];
     const pids = peopleIds[d.user_id] ? [peopleIds[d.user_id]] : [];
-    for (const [b, bl] of BLOCKS) {
-      const blk = (day.blocks || {})[b]; if (!blk) continue;
-      const conts = blk.split ? (blk.halves || []) : [blk];
-      const modes = conts.map(c => c.mode && TYPE[c.mode]).filter(Boolean);
-      const objs = conts.flatMap(c => (c.items || []).filter(i => i.kind === "obj").map(i => i.text));
-      if (modes.length) {
-        want[`b:${d.user_id}:${date}:${b}`] = {
-          summary: `${who} · ${bl}: ${modes.join(" / ")}`,
-          starts_at: nyISO(date, SPAN[b][0]), ends_at: nyISO(date, SPAN[b][1]),
-          description: objs.length ? `<div><strong>Objectives</strong></div><ul>${objs.map(o => `<li>${esc(o)}</li>`).join("")}</ul>` : "",
-          participant_ids: pids
-        };
-      }
-      for (const c of conts) for (const i of (c.items || []).filter(x => x.kind === "event")) {
-        const st = i.time || SPAN[b][0], en = i.time ? addHour(i.time) : SPAN[b][1];
-        want[`e:${d.user_id}:${i.id}`] = { summary: `${who} · ${i.text}`, starts_at: nyISO(date, st), ends_at: nyISO(date, en), description: "", participant_ids: pids };
-      }
+    for (const x of sharedFor(d.data || {})) {
+      const st = x.time || SPAN[x.b][0], en = x.time ? addHour(x.time) : SPAN[x.b][1];
+      const k = x.kind === "block" ? `b:${d.user_id}:${date}:${x.b}` : `e:${d.user_id}:${x.key.slice(2)}`;
+      want[k] = { summary: `${who} · ${x.text}`, starts_at: nyISO(date, st), ends_at: nyISO(date, en), description: "", participant_ids: pids };
     }
   }
   return want;

@@ -317,6 +317,12 @@ td.today-col{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .pubpick select{flex:1;min-width:0;font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
 .bcmsg.late{color:#9a3b1c}
 .bhrs{font-weight:500;color:var(--b-muted);letter-spacing:0;text-transform:none;margin-left:4px;font-size:.92em}
+.shr{flex:none;display:inline-flex;align-items:center;gap:3px;font:600 .62rem/1 var(--mono);letter-spacing:.04em;color:var(--b-muted);border:1px dashed var(--b-line);border-radius:4px;padding:2px 4px;cursor:pointer;white-space:nowrap;align-self:center}
+.shr input{margin:0;width:11px;height:11px;accent-color:#1d8a4b}
+.shr.on{color:#16703c;border-style:solid;border-color:#1d8a4b;background:rgba(29,138,75,.1)}
+[data-mode="family"] .shr.on,[data-mode="church"] .shr.on,[data-mode="education"] .shr.on,[data-mode="rest"] .shr.on{color:#fff;border-color:#fff;background:rgba(255,255,255,.18)}
+.shr.blk{margin-left:auto;margin-right:8px;font-family:inherit;text-transform:none;letter-spacing:0;font-size:.68rem}
+.shr.ro{cursor:default}
 </style>
 <style>
 /* sign-in screen + account line */
@@ -445,7 +451,7 @@ td.today-col{background:color-mix(in srgb,var(--accent) 6%,transparent)}
     <span><i style="background:var(--church)"></i>Church Gathering</span>
     <span><i style="background:var(--family);box-shadow:0 0 0 1px var(--line-strong)"></i>Family</span>
     <span><i style="background:var(--rest)"></i>Rest</span>
-    <span>Tap an item to edit or move it. On a computer you can also drag it, or a Basecamp to-do, into a block. Use “+1 hr break” for an errand or time away. Events can have a time: type it first, like “2pm Staff meeting”, or add it when editing.</span>
+    <span>Tap an item to edit or move it. On a computer you can also drag it, or a Basecamp to-do, into a block. Use “+1 hr break” for an errand or time away. Events can have a time: type it first, like “2pm Staff meeting”, or add it when editing. Check <b>BC</b> beside anything, or <b>Basecamp</b> on a block, to put it on the Basecamp Schedule.</span>
   </div>
 
   <main class="week" id="week"></main>

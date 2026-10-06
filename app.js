@@ -69,8 +69,12 @@
 
   /* ---------- rendering: blocks ---------- */
   function pris(){return getWeek(viewing,wsKey()).priorities}
+  function shareBox(on,readOnly,blk){
+    if(readOnly) return on?`<span class="shr on ro" title="On the Basecamp Schedule">BC</span>`:"";
+    return `<label class="shr${on?" on":""}${blk?" blk":""}" title="Put this on the Basecamp Schedule"><input type="checkbox" data-act="${blk?"share-blk":"share"}"${on?" checked":""} aria-label="Put on the Basecamp Schedule">${blk?"Basecamp":"BC"}</label>`;
+  }
   function taskLI(i,readOnly,parent){
-    return `<li class="it task${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done"><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">BC</a>`:""}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
+    return `<li class="it task${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done"><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">To-do</a>`:""}${shareBox(i.share,readOnly)}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
   }
   const KINDS=[["obj","Objective"],["task","Task"],["event","Event"]];
   const KIND_PH={obj:"Add an objective",task:"Add a task",event:"Add an event"};
@@ -85,11 +89,11 @@
     };
     const chip=ob=>{const n=P.findIndex(p=>p.id===ob.pri);return n>=0?`<span class="pchip" title="${esc(P[n].text)}">P${n+1}</span>`:""};
     const objHTML=ob=>`<li class="grp" data-id="${ob.id}">
-        <div class="it obj" data-id="${ob.id}"${readOnly?"":` draggable="true"`}><span class="mk" aria-hidden="true"></span><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ob.text)}</span>${chip(ob)}${del}</div>
+        <div class="it obj" data-id="${ob.id}"${readOnly?"":` draggable="true"`}><span class="mk" aria-hidden="true"></span><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ob.text)}</span>${chip(ob)}${shareBox(ob.share,readOnly)}${del}</div>
         ${ob.tasks.length?`<ul class="items sub">${ob.tasks.map(t=>taskLI(t,readOnly,ob.id)).join("")}</ul>`:""}
         ${readOnly?"":`<div class="subadd"><input id="sub-${ids}-${ob.id}" data-parent="${ob.id}" type="text" placeholder="+ Task under this objective" autocomplete="off" enterkeyhint="done"></div>`}
       </li>`;
-    const evHTML=ev=>`<li class="it event" data-id="${ev.id}"${readOnly?"":` draggable="true"`}><span class="ev-ic" aria-hidden="true"></span>${ev.time?`<span class="tm">${fmtTime(ev.time)}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ev.text)}</span>${del}</li>`;
+    const evHTML=ev=>`<li class="it event" data-id="${ev.id}"${readOnly?"":` draggable="true"`}><span class="ev-ic" aria-hidden="true"></span>${ev.time?`<span class="tm">${fmtTime(ev.time)}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ev.text)}</span>${shareBox(ev.share,readOnly)}${del}</li>`;
     const inId=`in-${ids}`, k=kindPref[inId]||"task";
     return `${breaks.length?`<ul class="items">${breaks.map(brkHTML).join("")}</ul>`:""}
       ${events.length?`<div class="sec">Events</div><ul class="items">${byTime(events).map(evHTML).join("")}</ul>`:""}
@@ -120,7 +124,7 @@
           <div class="bbody">${listHTML(hf,`${base}-${h}`,readOnly)}</div>
         </div>`).join("");
       return `<div class="block is-split" data-date="${date}" data-b="${b}">
-        <div class="bhead"><span class="bname">${label} · split <span class="bhrs">${HOURS[b]}</span></span>${readOnly?"":`<button class="split-btn" data-act="merge">Merge halves</button>`}</div>
+        <div class="bhead"><span class="bname">${label} · split <span class="bhrs">${HOURS[b]}</span></span>${shareBox(blk.share,readOnly,true)}${readOnly?"":`<button class="split-btn" data-act="merge">Merge halves</button>`}</div>
         ${calHTML(date,b)}
         <div class="halves">${halves}</div>
       </div>`;
@@ -130,7 +134,7 @@
     const kept=readOnly?"":(n?`${n} item${n>1?"s":""} kept for later`:"Protected time");
     const canSplit=!readOnly&&(!mode||SPLITTABLE.includes(mode));
     return `<div class="block" data-date="${date}" data-b="${b}" ${mode?`data-mode="${mode}"`:""}>
-      <div class="bhead"><span class="bname">${label} <span class="bhrs">${HOURS[b]}</span></span>${mode?`<span class="btype">${TYPE_NAME[mode]||""}</span>`:""}</div>
+      <div class="bhead"><span class="bname">${label} <span class="bhrs">${HOURS[b]}</span></span>${mode?shareBox(blk.share,readOnly,true):""}${mode?`<span class="btype">${TYPE_NAME[mode]||""}</span>`:""}</div>
       ${chipsHTML(mode,TYPES.map(t=>t[0]),readOnly,label)}
       ${calHTML(date,b)}
       <div class="bfill"><strong>${TYPE_NAME[mode]||""}</strong>${kept?`<small>${kept}</small>`:""}</div>
@@ -489,7 +493,7 @@
   }
   function takeItem(x,id,parent){
     const f=findItem(x.target,id,parent); if(!f||!f.item) return null;
-    if(f.owner){f.owner.tasks=f.owner.tasks.filter(t=>t.id!==id);const t={id:f.item.id,kind:"task",text:f.item.text,done:!!f.item.done};if(f.item.time)t.time=f.item.time;return t}
+    if(f.owner){f.owner.tasks=f.owner.tasks.filter(t=>t.id!==id);const t={id:f.item.id,kind:"task",text:f.item.text,done:!!f.item.done};if(f.item.share)t.share=true;return t}
     x.target.items=x.target.items.filter(i=>i.id!==id); return f.item;
   }
   function dropInto(date,b,h,item){
@@ -611,6 +615,9 @@
     const t=e.target; if(ro()) return;
     if(t.dataset.act==="kind"){const x=ctx(t);if(!x)return;const inId=`in-${x.ids}`;const k=kindPref[inId]=t.value;
       t.dataset.kind=k;const inp=document.getElementById(inId);if(inp){inp.placeholder=KIND_PH[k];inp.focus()}return}
+    if(t.dataset.act==="share-blk"){const x=ctx(t);if(!x)return;if(t.checked)x.blk.share=true;else delete x.blk.share;t.closest(".shr").classList.toggle("on",t.checked);saveDay(x.date);setStatus(t.checked?"Will show on the Basecamp Schedule":"Taken off the Basecamp Schedule");return}
+    if(t.dataset.act==="share"){const x=ctx(t);if(!x)return;const li=t.closest("[data-id]");const f=findItem(x.target,li.dataset.id,li.dataset.parent);if(!f||!f.item)return;
+      if(t.checked)f.item.share=true;else delete f.item.share;t.closest(".shr").classList.toggle("on",t.checked);saveDay(x.date);setStatus(t.checked?"Will show on the Basecamp Schedule":"Taken off the Basecamp Schedule");return}
     if(t.dataset.act!=="check") return; const x=ctx(t);
     const li=t.closest(".it"); const f=findItem(x.target,li.dataset.id,li.dataset.parent); if(!f||!f.item) return;
     f.item.done=t.checked; li.classList.toggle("done",t.checked); saveDay(x.date);
