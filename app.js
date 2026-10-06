@@ -63,7 +63,7 @@
   function countItems(o){return o.items.reduce((n,i)=>n+1+(i.tasks?i.tasks.length:0),0)}
   function isEmptyBlock(blk){return !blk.mode&&!blk.split&&!blk.items.length}
   function containers(day){const out=[];for(const [b] of BLOCKS){const blk=day.blocks[b];if(blk.split)blk.halves.forEach((h,i)=>out.push({b,h:i,c:h}));else out.push({b,h:null,c:blk})}return out}
-  function hasUnfinished(day){return containers(day).some(({c})=>c.items.some(i=>i.kind==="break"?false:i.kind==="obj"?i.tasks.some(t=>!t.done):!i.done))}
+  function hasUnfinished(day){return containers(day).some(({c})=>c.items.some(i=>i.kind==="break"||i.kind==="event"?false:i.kind==="obj"?i.tasks.some(t=>!t.done):!i.done))}
   function typing(){const a=document.activeElement;return !!(a&&((a.tagName==="INPUT"&&a.type==="text")||a.closest&&a.closest(".edit")))||!!document.querySelector(".edit")}
 
   /* ---------- rendering: blocks ---------- */
@@ -71,9 +71,11 @@
   function taskLI(i,readOnly,parent){
     return `<li class="it task${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done">${i.time?`<span class="tm">${fmtTime(i.time)}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">BC</a>`:""}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
   }
+  const KINDS=[["obj","Objective"],["task","Task"],["event","Event"]];
+  const KIND_PH={obj:"Add an objective",task:"Add a task",event:"Add an event"};
   function listHTML(o,ids,readOnly){
     const P=pris();
-    const objs=o.items.filter(i=>i.kind==="obj"), tasks=o.items.filter(i=>i.kind!=="obj"&&i.kind!=="break"), breaks=o.items.filter(i=>i.kind==="break");
+    const objs=o.items.filter(i=>i.kind==="obj"), tasks=o.items.filter(i=>i.kind!=="obj"&&i.kind!=="break"&&i.kind!=="event"), events=o.items.filter(i=>i.kind==="event"), breaks=o.items.filter(i=>i.kind==="break");
     const del=readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`;
     const brkHTML=bk=>{
       let when="1 hr";
@@ -86,14 +88,16 @@
         ${ob.tasks.length?`<ul class="items sub">${byTime(ob.tasks).map(t=>taskLI(t,readOnly,ob.id)).join("")}</ul>`:""}
         ${readOnly?"":`<div class="subadd"><input id="sub-${ids}-${ob.id}" data-parent="${ob.id}" type="text" placeholder="+ Task under this objective" autocomplete="off" enterkeyhint="done"></div>`}
       </li>`;
+    const evHTML=ev=>`<li class="it event" data-id="${ev.id}"${readOnly?"":` draggable="true"`}><span class="ev-ic" aria-hidden="true"></span>${ev.time?`<span class="tm">${fmtTime(ev.time)}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ev.text)}</span>${del}</li>`;
     const inId=`in-${ids}`, k=kindPref[inId]||"task";
     return `${breaks.length?`<ul class="items">${breaks.map(brkHTML).join("")}</ul>`:""}
+      ${events.length?`<div class="sec">Events</div><ul class="items">${byTime(events).map(evHTML).join("")}</ul>`:""}
       ${objs.length?`<div class="sec">Objectives</div><ul class="items">${byTime(objs).map(objHTML).join("")}</ul>`:""}
-      ${tasks.length?`${objs.length?`<div class="sec">Tasks</div>`:""}<ul class="items">${byTime(tasks).map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
+      ${tasks.length?`${objs.length||events.length?`<div class="sec">Tasks</div>`:""}<ul class="items">${byTime(tasks).map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
       ${!o.items.length?`<div class="empty">Nothing planned yet.</div>`:""}
       ${readOnly?"":`<div class="add">
-        <button class="kind" data-act="kind" data-kind="${k}" aria-label="Switch between objective and task">${k==="obj"?"Objective":"Task"}</button>
-        <input id="${inId}" type="text" placeholder="${k==="obj"?"Add an objective":"Add a task"}" autocomplete="off" enterkeyhint="done">
+        <select class="kind" data-act="kind" data-kind="${k}" aria-label="What to add">${KINDS.map(([v,l])=>`<option value="${v}"${v===k?" selected":""}>${l}</option>`).join("")}</select>
+        <input id="${inId}" type="text" placeholder="${KIND_PH[k]}" autocomplete="off" enterkeyhint="done">
         <button class="brkbtn" data-act="break" title="Add a one-hour break, for an errand or time away">+1 hr break</button>
       </div>`}`;
   }
@@ -510,7 +514,7 @@
           it.tasks=done;
         }
         keep.push(it);
-      }else if(it.kind!=="break"&&!it.done) out.push(it); else keep.push(it);
+      }else if(it.kind!=="break"&&it.kind!=="event"&&!it.done) out.push(it); else keep.push(it);
     }
     c.items=keep; return out;
   }
@@ -594,8 +598,6 @@
       const txt=weekEl.querySelector(`.it.brk[data-id="${bk.id}"] .txt`); if(txt) openEdit(txt);
       setStatus(bk.until?"Break added — you're back at "+new Date(bk.until).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"One-hour break added");
     }
-    else if(act==="kind"){const inId=`in-${x.ids}`;const k=kindPref[inId]=(t.dataset.kind==="obj")?"task":"obj";
-      t.dataset.kind=k;t.textContent=k==="obj"?"Objective":"Task";const inp=document.getElementById(inId);inp.placeholder=k==="obj"?"Add an objective":"Add a task";inp.focus()}
     else if(act==="del"){
       const li=t.closest("[data-id]"); const id=li.dataset.id, parent=li.dataset.parent;
       const f=findItem(x.target,id,parent); if(!f) return;
@@ -604,7 +606,10 @@
     }
   });
   weekEl.addEventListener("change",e=>{
-    const t=e.target; if(ro()||t.dataset.act!=="check") return; const x=ctx(t);
+    const t=e.target; if(ro()) return;
+    if(t.dataset.act==="kind"){const x=ctx(t);if(!x)return;const inId=`in-${x.ids}`;const k=kindPref[inId]=t.value;
+      t.dataset.kind=k;const inp=document.getElementById(inId);if(inp){inp.placeholder=KIND_PH[k];inp.focus()}return}
+    if(t.dataset.act!=="check") return; const x=ctx(t);
     const li=t.closest(".it"); const f=findItem(x.target,li.dataset.id,li.dataset.parent); if(!f||!f.item) return;
     f.item.done=t.checked; li.classList.toggle("done",t.checked); saveDay(x.date);
     if(f.item.bc&&f.item.bc.id!=null&&f.item.bc.type!=="card"){markPlannedDone(f.item.bc.id,t.checked);bcSetDone(f.item.bc.id,t.checked)}
@@ -628,7 +633,7 @@
     }else{
       const kind=kindPref[t.id]||"task";
       const lt=leadTime(text,x.b);
-      const it=kind==="obj"?{id:uid(),kind:"obj",text:lt.text,tasks:[]}:{id:uid(),kind:"task",text:lt.text,done:false};
+      const it=kind==="obj"?{id:uid(),kind:"obj",text:lt.text,tasks:[]}:kind==="event"?{id:uid(),kind:"event",text:lt.text}:{id:uid(),kind:"task",text:lt.text,done:false};
       if(lt.time) it.time=lt.time;
       x.target.items.push(it);
     }
@@ -826,7 +831,7 @@
   /* ---------- week tools ---------- */
   function cloneFresh(blk){
     const c=clone(blk);
-    const fix=o=>{o.items=(o.items||[]).filter(it=>it.kind!=="break");o.items.forEach(it=>{it.id=uid();if(it.kind==="obj"){delete it.pri;(it.tasks||[]).forEach(t=>{t.id=uid();t.done=false})}else it.done=false})};
+    const fix=o=>{o.items=(o.items||[]).filter(it=>it.kind!=="break");o.items.forEach(it=>{it.id=uid();if(it.kind==="obj"){delete it.pri;(it.tasks||[]).forEach(t=>{t.id=uid();t.done=false})}else if(it.kind!=="event")it.done=false})};
     fix(c); if(c.halves) c.halves.forEach(fix); return c;
   }
   function fillFrom(src,label){

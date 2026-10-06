@@ -135,7 +135,11 @@ ul.sub{margin-left:6px;padding-left:14px;border-left:2px solid var(--b-line)}
 .subadd input{width:100%;border:0;background:transparent;font:inherit;font-size:.8rem;color:var(--b-ink);padding:2px 0 2px 22px}
 .sec{font-size:.64rem;text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:var(--b-muted);margin-top:2px}
 .add{display:flex;align-items:center;gap:6px;margin-top:auto;border-top:1px dashed var(--b-line);padding-top:7px}
-.kind{flex:none;border:1px solid var(--b-line);background:transparent;color:var(--b-ink);border-radius:5px;font-size:.66rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;min-width:76px}
+.kind{flex:none;border:1px solid var(--b-line);background:transparent;color:var(--b-ink);border-radius:5px;font:600 .66rem/1.4 inherit;letter-spacing:.06em;text-transform:uppercase;padding:2px 4px;cursor:pointer}
+.kind option{color:#1a1e21;background:#fff;text-transform:none}
+.kind[data-kind="event"]{border-color:var(--b-ink);font-weight:700}
+.it.event .ev-ic{flex:none;width:11px;height:11px;margin-top:3px;border:2px solid var(--b-ink);border-top-width:4px;border-radius:2px}
+.it.event .tm{color:var(--b-ink)}
 .kind[data-kind="obj"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
 .add input{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:.86rem;color:var(--b-ink);padding:3px 0}
 .add input::placeholder,.subadd input::placeholder{color:var(--b-muted)}
