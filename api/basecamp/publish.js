@@ -148,7 +148,7 @@ async function listEntries(link, s, sched) {
   const out = []; let url = `/buckets/${s.bucket_id}/schedules/${sched}/entries.json`;
   for (let i = 0; i < 10 && url; i++) {
     const r = await fetch(/^https:/.test(url) ? url : `https://3.basecampapi.com/${link.account}${url}`, { headers: { Authorization: `Bearer ${link.access}`, "User-Agent": L.UA, Accept: "application/json" } });
-    if (!r.ok) break;
+    if (!r.ok) { out.err = r.status; break; }
     out.push(...await r.json());
     const m = /<([^>]+)>;\s*rel="next"/.exec(r.headers.get("link") || "");
     url = m ? m[1] : null;
@@ -156,7 +156,9 @@ async function listEntries(link, s, sched) {
   return out;
 }
 
+let diag = {};
 async function syncSchedule(link, s, want, have, deadline, ws, names, checkpoint) {
+  diag = { names };
   const sched = await scheduleId(link, s);
   if (!sched) return { note: "That project's Schedule is turned off, so only the document was updated." };
   let n = 0;
@@ -169,8 +171,11 @@ async function syncSchedule(link, s, want, have, deadline, ws, names, checkpoint
       const lo = nyISO(ws, "00:00"), hi = nyISO(addDays(ws, 7), "00:00");
       const ours = e => e.creator && e.creator.id === me.id && names.some(nm => String(e.summary || "").startsWith(nm + " · "));
       const inWeek = e => { const t = Date.parse(e.starts_at); return t >= Date.parse(lo) && t < Date.parse(hi); };
-      for (const e of await listEntries(link, s, sched)) {
+      const all = await listEntries(link, s, sched);
+      diag.listed = all.length; diag.listErr = all.err; diag.me = me.id; diag.sample = all.slice(0, 2).map(e => ({ c: e.creator && e.creator.id, s: e.summary, t: e.starts_at }));
+      for (const e of all) {
         if (ours(e) && inWeek(e) && !known.has(String(e.id))) {
+          diag.swept = (diag.swept || 0) + 1;
           try { await call("PUT", `/buckets/${s.bucket_id}/recordings/${e.id}/status/trashed.json`); } catch (err) { if (err.status !== 404 && err.status !== 403) throw err; }
         }
       }
@@ -249,7 +254,7 @@ async function publishWeekLocked(ws, force, key) {
   const save = doc.id || Object.keys(doc.entries).length ? doc : null;
   await L.rpc("publish_save", { p_key: key, p_week: save ? ws : null, p_doc: save, p_error: err || info.note || null, p_blob: newBlob });
   if (err) return { error: err };
-  return { url: doc.url, ...(info.partial ? { more: true } : {}), ...(info.note ? { note: info.note } : {}) };
+  return { url: doc.url, diag, ...(info.partial ? { more: true } : {}), ...(info.note ? { note: info.note } : {}) };
 }
 
 async function listProjects(link) {
