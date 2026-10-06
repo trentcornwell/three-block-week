@@ -74,6 +74,21 @@ details.trouble{margin:0 0 8px}
 details.trouble summary{cursor:pointer;font-weight:600}
 details.trouble p{margin:8px 0 4px;color:var(--muted)}
 footer{margin-top:28px;font-size:.88rem;color:var(--muted)}
+.shot{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:0}
+.shot img{display:block;width:100%;height:auto}
+.shot figcaption{font-size:.86rem;color:var(--muted);padding:10px 14px;border-top:1px solid var(--line)}
+.shots2{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:14px;margin:14px 0}
+.shots2 .stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+.phone{border:7px solid #121416;border-radius:26px}
+.phone img{max-height:420px;object-fit:cover;object-position:top}
+.sample{display:inline-block;font:700 .66rem/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:3px 6px;margin-left:6px;vertical-align:1px}
+.h2big{font:700 1.6rem/1.15 var(--display);letter-spacing:-.01em;margin:34px 0 6px}
+.sub{color:var(--muted);margin:0 0 16px}
+.benefits{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:0 0 8px;padding:0;list-style:none}
+.benefits li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;border-top:4px solid var(--c,var(--accent))}
+.benefits b{display:block;font:700 1.02rem/1.3 var(--display);margin-bottom:4px}
+.benefits span{font-size:.92rem;color:var(--muted)}
+@media (max-width:640px){.shots2{grid-template-columns:1fr}.phone{max-width:240px;margin:0 auto}}
 @media (max-width:520px){.card{padding:16px}.step ol{padding-left:18px}}
 </style>
 </head>
@@ -86,6 +101,34 @@ footer{margin-top:28px;font-size:.88rem;color:var(--muted)}
     <li>About 1 hour</li><li>Free for a church staff</li><li>No coding, mostly copy and paste</li><li>Works on phone and computer</li>
   </ul>
 
+
+  <h2 class="h2big">What it looks like</h2>
+  <p class="sub">Every day is three blocks. Pick what each block is for, then fill work blocks with objectives and tasks. <span class="sample">Sample data</span></p>
+  <figure class="shot"><img src="/img/week.jpg" width="1400" height="1081" alt="Three days of a sample week: each day has Morning, Afternoon and Evening blocks colored by type, with objectives, tasks, calendar events and a one-hour break" loading="lazy"><figcaption>The week view: off-white for office and remote work, blue for study, purple for church gatherings, black for family, green for rest.</figcaption></figure>
+  <div class="shots2">
+    <div class="stack">
+      <figure class="shot"><img src="/img/summary.jpg" width="1100" height="453" alt="Week summary with block counts, guardrail pills and weekly priorities" loading="lazy"><figcaption>The week at a glance, with guardrails that warn when rest or family time runs short.</figcaption></figure>
+      <figure class="shot"><img src="/img/staff.jpg" width="1300" height="375" alt="Staff view showing each staff member's week as colored bars" loading="lazy"><figcaption>The staff view: everyone's week side by side for staff meeting.</figcaption></figure>
+    </div>
+    <figure class="shot phone"><img src="/img/phone.jpg" width="420" height="840" alt="Today view on a phone" loading="lazy"></figure>
+  </div>
+  <figure class="shot"><img src="/img/basecamp.jpg" width="1100" height="275" alt="Basecamp to-dos tray" loading="lazy"><figcaption>Basecamp to-dos assigned to you, ready to plan into a block.</figcaption></figure>
+
+  <h2 class="h2big">Why pastors use it</h2>
+  <ul class="benefits">
+    <li style="--c:var(--rest)"><b>Rest and family get planned first</b><span>Sabbath and family evenings are blocks on the calendar, not whatever is left over.</span></li>
+    <li style="--c:var(--accent)"><b>Purpose before tasks</b><span>Each block is named before it fills up, so the day has a shape instead of a pile of to-dos.</span></li>
+    <li style="--c:var(--edu)"><b>Study time stays protected</b><span>Sermon prep and on-going education get their own blocks, not the gaps between meetings.</span></li>
+    <li style="--c:var(--warn)"><b>Guardrails that speak up</b><span>Too many working evenings or too little rest? The week tells you before Sunday does.</span></li>
+    <li style="--c:var(--church)"><b>The whole staff in one view</b><span>See who's in the office, who's resting and what each person is focused on, without a meeting to find out.</span></li>
+    <li style="--c:var(--accent)"><b>Objectives, not just errands</b><span>Big goals hold their tasks underneath and tie back to the week's top priorities.</span></li>
+    <li style="--c:var(--rest)"><b>Works with what you already use</b><span>Google Calendar events show in the right block, and Basecamp to-dos and schedules stay in step.</span></li>
+    <li style="--c:var(--family)"><b>Nothing slips</b><span>Unfinished items move to the next day with one tap, and a weekly template fills a new week fast.</span></li>
+    <li style="--c:var(--edu)"><b>Private and free</b><span>Your own copy, your own data, only your staff can sign in. Free hosting, no subscription.</span></li>
+  </ul>
+
+  <h2 class="h2big">Set it up</h2>
+  <p class="sub">About an hour, mostly creating free accounts and copying and pasting.</p>
   <section class="card fill" aria-labelledby="fillh">
     <h2 id="fillh" style="font:700 1.1rem var(--display)">Fill these in as you go</h2>
     <p>The instructions below update to match, so you can copy them exactly. Nothing you type here leaves this page.</p>
