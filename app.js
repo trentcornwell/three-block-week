@@ -124,7 +124,7 @@
           <div class="bbody">${listHTML(hf,`${base}-${h}`,readOnly)}</div>
         </div>`).join("");
       return `<div class="block is-split" data-date="${date}" data-b="${b}">
-        <div class="bhead"><span class="bname">${label} · split <span class="bhrs">${HOURS[b]}</span></span>${shareBox(blk.share,readOnly,true)}${readOnly?"":`<button class="split-btn" data-act="merge">Merge halves</button>`}</div>
+        <div class="bhead"><span class="bname">${label} · split</span>${shareBox(blk.share,readOnly,true)}${readOnly?"":`<button class="split-btn" data-act="merge">Merge halves</button>`}</div>
         ${calHTML(date,b)}
         <div class="halves">${halves}</div>
       </div>`;
@@ -134,7 +134,7 @@
     const kept=readOnly?"":(n?`${n} item${n>1?"s":""} kept for later`:"Protected time");
     const canSplit=!readOnly&&(!mode||SPLITTABLE.includes(mode));
     return `<div class="block" data-date="${date}" data-b="${b}" ${mode?`data-mode="${mode}"`:""}>
-      <div class="bhead"><span class="bname">${label} <span class="bhrs">${HOURS[b]}</span></span>${mode?shareBox(blk.share,readOnly,true):""}${mode?`<span class="btype">${TYPE_NAME[mode]||""}</span>`:""}</div>
+      <div class="bhead"><span class="bname">${label}</span>${mode?shareBox(blk.share,readOnly,true):""}${mode?`<span class="btype">${TYPE_NAME[mode]||""}</span>`:""}</div>
       ${chipsHTML(mode,TYPES.map(t=>t[0]),readOnly,label)}
       ${calHTML(date,b)}
       <div class="bfill"><strong>${TYPE_NAME[mode]||""}</strong>${kept?`<small>${kept}</small>`:""}</div>
