@@ -1,6 +1,7 @@
 /* Three-Block Week — staff planner. Data lives in Supabase (see supabase/schema.sql). */
 (function(){
   const BLOCKS=[["m","Morning"],["a","Afternoon"],["e","Evening"]];
+  const HOURS={m:"8 AM – 12 PM",a:"12 – 4 PM",e:"4 – 8 PM"};
   const TYPES=[["office","Work · Office","Work · Office","Office"],["remote","Work · Remote","Work · Remote","Remote"],["education","On-Going Education","Education","Edu"],["church","Church Gathering","Church","Church"],["family","Family","Family","Family"],["rest","Rest","Rest","Rest"]];
   const TYPE_NAME=Object.fromEntries(TYPES.map(t=>[t[0],t[1]]));
   const TYPE_TINY=Object.fromEntries(TYPES.map(t=>[t[0],t[3]]));
@@ -69,7 +70,7 @@
   /* ---------- rendering: blocks ---------- */
   function pris(){return getWeek(viewing,wsKey()).priorities}
   function taskLI(i,readOnly,parent){
-    return `<li class="it task${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done">${i.time?`<span class="tm">${fmtTime(i.time)}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">BC</a>`:""}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
+    return `<li class="it task${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done"><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">BC</a>`:""}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
   }
   const KINDS=[["obj","Objective"],["task","Task"],["event","Event"]];
   const KIND_PH={obj:"Add an objective",task:"Add a task",event:"Add an event"};
@@ -84,16 +85,16 @@
     };
     const chip=ob=>{const n=P.findIndex(p=>p.id===ob.pri);return n>=0?`<span class="pchip" title="${esc(P[n].text)}">P${n+1}</span>`:""};
     const objHTML=ob=>`<li class="grp" data-id="${ob.id}">
-        <div class="it obj" data-id="${ob.id}"${readOnly?"":` draggable="true"`}><span class="mk" aria-hidden="true"></span>${ob.time?`<span class="tm">${fmtTime(ob.time)}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ob.text)}</span>${chip(ob)}${del}</div>
-        ${ob.tasks.length?`<ul class="items sub">${byTime(ob.tasks).map(t=>taskLI(t,readOnly,ob.id)).join("")}</ul>`:""}
+        <div class="it obj" data-id="${ob.id}"${readOnly?"":` draggable="true"`}><span class="mk" aria-hidden="true"></span><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ob.text)}</span>${chip(ob)}${del}</div>
+        ${ob.tasks.length?`<ul class="items sub">${ob.tasks.map(t=>taskLI(t,readOnly,ob.id)).join("")}</ul>`:""}
         ${readOnly?"":`<div class="subadd"><input id="sub-${ids}-${ob.id}" data-parent="${ob.id}" type="text" placeholder="+ Task under this objective" autocomplete="off" enterkeyhint="done"></div>`}
       </li>`;
     const evHTML=ev=>`<li class="it event" data-id="${ev.id}"${readOnly?"":` draggable="true"`}><span class="ev-ic" aria-hidden="true"></span>${ev.time?`<span class="tm">${fmtTime(ev.time)}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ev.text)}</span>${del}</li>`;
     const inId=`in-${ids}`, k=kindPref[inId]||"task";
     return `${breaks.length?`<ul class="items">${breaks.map(brkHTML).join("")}</ul>`:""}
       ${events.length?`<div class="sec">Events</div><ul class="items">${byTime(events).map(evHTML).join("")}</ul>`:""}
-      ${objs.length?`<div class="sec">Objectives</div><ul class="items">${byTime(objs).map(objHTML).join("")}</ul>`:""}
-      ${tasks.length?`${objs.length||events.length?`<div class="sec">Tasks</div>`:""}<ul class="items">${byTime(tasks).map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
+      ${objs.length?`<div class="sec">Objectives</div><ul class="items">${objs.map(objHTML).join("")}</ul>`:""}
+      ${tasks.length?`${objs.length||events.length?`<div class="sec">Tasks</div>`:""}<ul class="items">${tasks.map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
       ${!o.items.length?`<div class="empty">Nothing planned yet.</div>`:""}
       ${readOnly?"":`<div class="add">
         <select class="kind" data-act="kind" data-kind="${k}" aria-label="What to add">${KINDS.map(([v,l])=>`<option value="${v}"${v===k?" selected":""}>${l}</option>`).join("")}</select>
@@ -119,7 +120,7 @@
           <div class="bbody">${listHTML(hf,`${base}-${h}`,readOnly)}</div>
         </div>`).join("");
       return `<div class="block is-split" data-date="${date}" data-b="${b}">
-        <div class="bhead"><span class="bname">${label} · split</span>${readOnly?"":`<button class="split-btn" data-act="merge">Merge halves</button>`}</div>
+        <div class="bhead"><span class="bname">${label} · split <span class="bhrs">${HOURS[b]}</span></span>${readOnly?"":`<button class="split-btn" data-act="merge">Merge halves</button>`}</div>
         ${calHTML(date,b)}
         <div class="halves">${halves}</div>
       </div>`;
@@ -129,7 +130,7 @@
     const kept=readOnly?"":(n?`${n} item${n>1?"s":""} kept for later`:"Protected time");
     const canSplit=!readOnly&&(!mode||SPLITTABLE.includes(mode));
     return `<div class="block" data-date="${date}" data-b="${b}" ${mode?`data-mode="${mode}"`:""}>
-      <div class="bhead"><span class="bname">${label}</span>${mode?`<span class="btype">${TYPE_NAME[mode]||""}</span>`:""}</div>
+      <div class="bhead"><span class="bname">${label} <span class="bhrs">${HOURS[b]}</span></span>${mode?`<span class="btype">${TYPE_NAME[mode]||""}</span>`:""}</div>
       ${chipsHTML(mode,TYPES.map(t=>t[0]),readOnly,label)}
       ${calHTML(date,b)}
       <div class="bfill"><strong>${TYPE_NAME[mode]||""}</strong>${kept?`<small>${kept}</small>`:""}</div>
@@ -545,12 +546,12 @@
   function openEdit(txt){
     const row=txt.closest(".it"); if(!row||row.querySelector(".edit")) return;
     const x=ctx(row); if(!x) return;
-    const isObj=row.classList.contains("obj"), isBrk=row.classList.contains("brk");
+    const isObj=row.classList.contains("obj"), isBrk=row.classList.contains("brk"), isEv=row.classList.contains("event");
     const f=findItem(x.target,row.dataset.id,row.dataset.parent); if(!f||!f.item) return;
     const P=pris();
     const form=document.createElement("div"); form.className="edit";
     form.innerHTML=`<input class="etext" type="text" aria-label="Text">
-      ${isBrk?"":`<label class="etl">Time <span>(optional)</span><input class="etime" type="time" step="300" aria-label="Time (optional)"><button type="button" class="linkbtn" data-act="eclear">Clear</button></label>`}
+      ${!isEv?"":`<label class="etl">Time <span>(optional)</span><input class="etime" type="time" step="300" aria-label="Time (optional)"><button type="button" class="linkbtn" data-act="eclear">Clear</button></label>`}
       ${isObj&&P.length?`<select class="epri" aria-label="Weekly priority"><option value="">No weekly priority</option>${P.map((p,i)=>`<option value="${p.id}">P${i+1} · ${esc(p.text)}</option>`).join("")}</select>`:""}
       <select class="emove" aria-label="Move">${moveOptions(x.date,x.b)}</select>
       <div class="erow"><button class="primary" data-act="esave">Save</button><button data-act="ecancel">Cancel</button></div>`;
@@ -630,10 +631,10 @@
     const x=ctx(t);
     if(t.dataset.parent){
       const ob=x.target.items.find(i=>i.id===t.dataset.parent); if(!ob) return;
-      const lt=leadTime(text,x.b); const it={id:uid(),text:lt.text,done:false}; if(lt.time) it.time=lt.time; ob.tasks.push(it);
+      ob.tasks.push({id:uid(),text,done:false});
     }else{
       const kind=kindPref[t.id]||"task";
-      const lt=leadTime(text,x.b);
+      const lt=kind==="event"?leadTime(text,x.b):{text};
       const it=kind==="obj"?{id:uid(),kind:"obj",text:lt.text,tasks:[]}:kind==="event"?{id:uid(),kind:"event",text:lt.text}:{id:uid(),kind:"task",text:lt.text,done:false};
       if(lt.time) it.time=lt.time;
       x.target.items.push(it);

@@ -56,7 +56,7 @@ function render(ws, data) {
             else if (i.kind === "break") notes.push(`${bl}: Break (${esc(i.text || "errand")})`);
             else {
               const n = (i.tasks || []).length, done = (i.tasks || []).filter(x => x.done).length;
-              notes.push(`${bl}: <strong>${t}${esc(i.text)}</strong>${n ? ` (${done}/${n} done)` : ""}`);
+              notes.push(`${bl}: <strong>${esc(i.text)}</strong>${n ? ` (${done}/${n} done)` : ""}`);
             }
           }
         }
