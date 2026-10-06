@@ -388,9 +388,14 @@
   function storeGToken(session){if(session&&session.provider_token){try{localStorage.setItem(GTOKEN,JSON.stringify({token:session.provider_token,exp:Date.now()+55*60000}))}catch(e){}}}
   function parseCal(p){
     const out={}; const slot=d=>out[d]||(out[d]={allDay:[],m:[],a:[],e:[]});
+    const seen=new Set(), echo=((profileMap[me]||{}).name||"").trim();
     for(const ev of (p&&p.items)||[]){
       if(ev.status==="cancelled") continue;
       const title=ev.summary||"(No title)";
+      // Skip copies of this planner's own Basecamp entries coming back through a Basecamp calendar feed, and exact duplicates across calendars.
+      if(echo&&title.startsWith(echo+" · ")) continue;
+      const dk=title+"|"+((ev.start&&(ev.start.dateTime||ev.start.date))||"");
+      if(seen.has(dk)) continue; seen.add(dk);
       if(ev.start&&ev.start.date){
         const sd=String(ev.start.date).slice(0,10), ed=String((ev.end&&ev.end.date)||ev.start.date).slice(0,10);
         let d=dateOf(sd), guard=0;
