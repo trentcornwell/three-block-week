@@ -144,12 +144,37 @@ async function scheduleId(link, s) {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Brings the project's Schedule in line with the planner. Saves progress as it goes back into `have`.
-async function syncSchedule(link, s, want, have, deadline) {
+async function listEntries(link, s, sched) {
+  const out = []; let url = `/buckets/${s.bucket_id}/schedules/${sched}/entries.json`;
+  for (let i = 0; i < 10 && url; i++) {
+    const r = await fetch(/^https:/.test(url) ? url : `https://3.basecampapi.com/${link.account}${url}`, { headers: { Authorization: `Bearer ${link.access}`, "User-Agent": L.UA, Accept: "application/json" } });
+    if (!r.ok) break;
+    out.push(...await r.json());
+    const m = /<([^>]+)>;\s*rel="next"/.exec(r.headers.get("link") || "");
+    url = m ? m[1] : null;
+  }
+  return out;
+}
+
+async function syncSchedule(link, s, want, have, deadline, ws, names, checkpoint) {
   const sched = await scheduleId(link, s);
   if (!sched) return { note: "That project's Schedule is turned off, so only the document was updated." };
   let n = 0;
-  const call = async (m, path, body) => { if (Date.now() > deadline) throw Object.assign(new Error("later"), { code: "later" }); n++; if (n > 1) await sleep(220); return L.bc(link, m, path, body); };
+  const call = async (m, path, body) => { if (Date.now() > deadline) throw Object.assign(new Error("later"), { code: "later" }); n++; if (n > 1) await sleep(220); const out = await L.bc(link, m, path, body); if (n % 8 === 0) await checkpoint(); return out; };
   try {
+    // Clean up: entries this planner made for this week that it isn't tracking (for example, duplicates).
+    const me = await L.bc(link, "GET", "/my/profile.json").catch(() => null);
+    if (me && names.length) {
+      const known = new Set(Object.values(have).map(h => String(h.id)));
+      const lo = nyISO(ws, "00:00"), hi = nyISO(addDays(ws, 7), "00:00");
+      const ours = e => e.creator && e.creator.id === me.id && names.some(nm => String(e.summary || "").startsWith(nm + " · "));
+      const inWeek = e => { const t = Date.parse(e.starts_at); return t >= Date.parse(lo) && t < Date.parse(hi); };
+      for (const e of await listEntries(link, s, sched)) {
+        if (ours(e) && inWeek(e) && !known.has(String(e.id))) {
+          try { await call("PUT", `/buckets/${s.bucket_id}/recordings/${e.id}/status/trashed.json`); } catch (err) { if (err.status !== 404 && err.status !== 403) throw err; }
+        }
+      }
+    }
     for (const [k, e] of Object.entries(want)) {
       const sg = sig(e), cur = have[k];
       if (cur && cur.s === sg) continue;
@@ -177,8 +202,15 @@ async function syncSchedule(link, s, want, have, deadline) {
 
 // Creates or updates the document and the schedule entries for one week.
 async function publishWeek(ws, force) {
-  const started = Date.now();
   const key = L.publishKey();
+  let locked = false;
+  for (let i = 0; i < 3 && !locked; i++) { locked = await L.rpc("publish_lock", { p_key: key }); if (!locked) await sleep(4000); }
+  if (!locked) return { busy: true, more: true };
+  try { return await publishWeekLocked(ws, force, key); }
+  finally { await L.rpc("publish_unlock", { p_key: key }).catch(() => {}); }
+}
+async function publishWeekLocked(ws, force, key) {
+  const started = Date.now();
   const data = await L.rpc("publish_data", { p_key: key, p_week: ws });
   const s = data.settings || {};
   if (!s.enabled) return { skipped: "off" };
@@ -204,7 +236,9 @@ async function publishWeek(ws, force) {
     const want = desiredEntries(ws, data, ids);
     const wantHash = sig(Object.fromEntries(Object.entries(want).map(([k, e]) => [k, sig(e)])));
     if (doc.sched !== wantHash || force) {
-      try { info = await syncSchedule(link, s, want, doc.entries, started + 45000); }
+      const names = [...new Set((data.people || []).map(p => first(p.name || p.email)))];
+      const checkpoint = () => L.rpc("publish_save", { p_key: key, p_week: ws, p_doc: doc, p_error: null, p_blob: null }).catch(() => {});
+      try { info = await syncSchedule(link, s, want, doc.entries, started + 45000, ws, names, checkpoint); }
       catch (e) { info = { note: `Couldn't update the Schedule (Basecamp said ${e.status || e.message}). Will try again.` }; }
       if (!info.partial && !info.note) doc.sched = wantHash; else delete doc.sched;
     }
