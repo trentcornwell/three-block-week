@@ -149,7 +149,7 @@ async function listEntries(link, s, sched, untilMs) {
   const out = []; let url = `/buckets/${s.bucket_id}/schedules/${sched}/entries.json`;
   for (let i = 0; i < 80 && url; i++) {
     const r = await fetch(/^https:/.test(url) ? url : `https://3.basecampapi.com/${link.account}${url}`, { headers: { Authorization: `Bearer ${link.access}`, "User-Agent": L.UA, Accept: "application/json" } });
-    if (!r.ok) { out.err = r.status; break; }
+    if (!r.ok) break;
     const page = await r.json();
     out.push(...page);
     if (page.length && Date.parse(page[page.length - 1].starts_at) > untilMs) break;
@@ -159,9 +159,7 @@ async function listEntries(link, s, sched, untilMs) {
   return out;
 }
 
-let diag = {};
 async function syncSchedule(link, s, want, have, deadline, ws, names, checkpoint, sweep) {
-  diag = { names };
   const sched = await scheduleId(link, s);
   if (!sched) return { note: "That project's Schedule is turned off, so only the document was updated." };
   let n = 0;
@@ -175,10 +173,8 @@ async function syncSchedule(link, s, want, have, deadline, ws, names, checkpoint
       const ours = e => e.creator && e.creator.id === me.id && names.some(nm => String(e.summary || "").startsWith(nm + " · "));
       const inWeek = e => { const t = Date.parse(e.starts_at); return t >= Date.parse(lo) && t < Date.parse(hi); };
       const all = await listEntries(link, s, sched, Date.parse(hi));
-      diag.listed = all.length; diag.listErr = all.err; diag.me = me.id; diag.sample = all.slice(0, 2).map(e => ({ c: e.creator && e.creator.id, s: e.summary, t: e.starts_at }));
       for (const e of all) {
         if (ours(e) && inWeek(e) && !known.has(String(e.id))) {
-          diag.swept = (diag.swept || 0) + 1;
           try { await call("PUT", `/buckets/${s.bucket_id}/recordings/${e.id}/status/trashed.json`); } catch (err) { if (err.status !== 404 && err.status !== 403) throw err; }
         }
       }
@@ -246,7 +242,7 @@ async function publishWeekLocked(ws, force, key) {
     if (doc.sched !== wantHash || force || !doc.swept) {
       const names = [...new Set((data.people || []).map(p => first(p.name || p.email)))];
       const checkpoint = () => L.rpc("publish_save", { p_key: key, p_week: ws, p_doc: doc, p_error: null, p_blob: null }).catch(() => {});
-      const sweep = force || !doc.swept;
+      const sweep = !doc.swept;
       try { info = await syncSchedule(link, s, want, doc.entries, started + 45000, ws, names, checkpoint, sweep); if (sweep && !info.partial && !info.note) doc.swept = true; }
       catch (e) { info = { note: `Couldn't update the Schedule (Basecamp said ${e.status || e.message}). Will try again.` }; }
       if (!info.partial && !info.note) doc.sched = wantHash; else delete doc.sched;
@@ -258,7 +254,7 @@ async function publishWeekLocked(ws, force, key) {
   const save = doc.id || Object.keys(doc.entries).length ? doc : null;
   await L.rpc("publish_save", { p_key: key, p_week: save ? ws : null, p_doc: save, p_error: err || info.note || null, p_blob: newBlob });
   if (err) return { error: err };
-  return { url: doc.url, diag, ...(info.partial ? { more: true } : {}), ...(info.note ? { note: info.note } : {}) };
+  return { url: doc.url, ...(info.partial ? { more: true } : {}), ...(info.note ? { note: info.note } : {}) };
 }
 
 async function listProjects(link) {
