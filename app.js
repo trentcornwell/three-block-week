@@ -33,6 +33,19 @@
   function weekDates(ws){ws=ws||weekStart;return Array.from({length:7},(_,i)=>key(addDays(ws,i)))}
   function wsKey(){return key(weekStart)}
   function uid(){return Math.random().toString(36).slice(2,10)}
+  // Optional times: stored as "HH:MM" (24h), shown as "9:30 AM".
+  function fmtTime(t){if(!t)return "";const [h,m]=t.split(":").map(Number);return `${(h%12)||12}:${String(m).padStart(2,"0")} ${h<12?"AM":"PM"}`}
+  function byTime(list){const timed=list.filter(i=>i.time).sort((a,b)=>a.time<b.time?-1:a.time>b.time?1:0);return [...timed,...list.filter(i=>!i.time)]}
+  // "9:30 Call Bob", "2pm Staff meeting", "10:15am Visit" -> {time, text}. Needs a colon or am/pm so "1 Corinthians" stays text.
+  function leadTime(text,b){
+    const m=text.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a|p)?\.?\s+(.+)$/i);
+    if(!m||(!m[2]&&!m[3])) return {text};
+    let h=+m[1], mi=m[2]?+m[2]:0; const ap=(m[3]||"").toLowerCase();
+    if(h<1||h>12&&ap||h>23||mi>59) return {text};
+    if(ap.startsWith("p")&&h<12) h+=12; else if(ap.startsWith("a")&&h===12) h=0;
+    else if(!ap&&h<12&&h>=1&&(b==="a"&&h<=6||b==="e"&&h<=11)) h+=12;
+    return {time:`${String(h).padStart(2,"0")}:${String(mi).padStart(2,"0")}`,text:m[4].trim()};
+  }
   function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
   function clone(o){return JSON.parse(JSON.stringify(o))}
   function fixItems(o){if(!Array.isArray(o.items))o.items=[];o.items.forEach(i=>{if(i.kind==="obj"&&!Array.isArray(i.tasks))i.tasks=[]})}
@@ -56,7 +69,7 @@
   /* ---------- rendering: blocks ---------- */
   function pris(){return getWeek(viewing,wsKey()).priorities}
   function taskLI(i,readOnly,parent){
-    return `<li class="it task${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done"><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">BC</a>`:""}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
+    return `<li class="it task${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done">${i.time?`<span class="tm">${fmtTime(i.time)}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">BC</a>`:""}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
   }
   function listHTML(o,ids,readOnly){
     const P=pris();
@@ -69,14 +82,14 @@
     };
     const chip=ob=>{const n=P.findIndex(p=>p.id===ob.pri);return n>=0?`<span class="pchip" title="${esc(P[n].text)}">P${n+1}</span>`:""};
     const objHTML=ob=>`<li class="grp" data-id="${ob.id}">
-        <div class="it obj" data-id="${ob.id}"${readOnly?"":` draggable="true"`}><span class="mk" aria-hidden="true"></span><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ob.text)}</span>${chip(ob)}${del}</div>
-        ${ob.tasks.length?`<ul class="items sub">${ob.tasks.map(t=>taskLI(t,readOnly,ob.id)).join("")}</ul>`:""}
+        <div class="it obj" data-id="${ob.id}"${readOnly?"":` draggable="true"`}><span class="mk" aria-hidden="true"></span>${ob.time?`<span class="tm">${fmtTime(ob.time)}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ob.text)}</span>${chip(ob)}${del}</div>
+        ${ob.tasks.length?`<ul class="items sub">${byTime(ob.tasks).map(t=>taskLI(t,readOnly,ob.id)).join("")}</ul>`:""}
         ${readOnly?"":`<div class="subadd"><input id="sub-${ids}-${ob.id}" data-parent="${ob.id}" type="text" placeholder="+ Task under this objective" autocomplete="off" enterkeyhint="done"></div>`}
       </li>`;
     const inId=`in-${ids}`, k=kindPref[inId]||"task";
     return `${breaks.length?`<ul class="items">${breaks.map(brkHTML).join("")}</ul>`:""}
-      ${objs.length?`<div class="sec">Objectives</div><ul class="items">${objs.map(objHTML).join("")}</ul>`:""}
-      ${tasks.length?`${objs.length?`<div class="sec">Tasks</div>`:""}<ul class="items">${tasks.map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
+      ${objs.length?`<div class="sec">Objectives</div><ul class="items">${byTime(objs).map(objHTML).join("")}</ul>`:""}
+      ${tasks.length?`${objs.length?`<div class="sec">Tasks</div>`:""}<ul class="items">${byTime(tasks).map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
       ${!o.items.length?`<div class="empty">Nothing planned yet.</div>`:""}
       ${readOnly?"":`<div class="add">
         <button class="kind" data-act="kind" data-kind="${k}" aria-label="Switch between objective and task">${k==="obj"?"Objective":"Task"}</button>
@@ -470,7 +483,7 @@
   }
   function takeItem(x,id,parent){
     const f=findItem(x.target,id,parent); if(!f||!f.item) return null;
-    if(f.owner){f.owner.tasks=f.owner.tasks.filter(t=>t.id!==id);return {id:f.item.id,kind:"task",text:f.item.text,done:!!f.item.done}}
+    if(f.owner){f.owner.tasks=f.owner.tasks.filter(t=>t.id!==id);const t={id:f.item.id,kind:"task",text:f.item.text,done:!!f.item.done};if(f.item.time)t.time=f.item.time;return t}
     x.target.items=x.target.items.filter(i=>i.id!==id); return f.item;
   }
   function dropInto(date,b,h,item){
@@ -527,17 +540,19 @@
   function openEdit(txt){
     const row=txt.closest(".it"); if(!row||row.querySelector(".edit")) return;
     const x=ctx(row); if(!x) return;
-    const isObj=row.classList.contains("obj");
+    const isObj=row.classList.contains("obj"), isBrk=row.classList.contains("brk");
     const f=findItem(x.target,row.dataset.id,row.dataset.parent); if(!f||!f.item) return;
     const P=pris();
     const form=document.createElement("div"); form.className="edit";
     form.innerHTML=`<input class="etext" type="text" aria-label="Text">
+      ${isBrk?"":`<label class="etl">Time <span>(optional)</span><input class="etime" type="time" step="300" aria-label="Time (optional)"><button type="button" class="linkbtn" data-act="eclear">Clear</button></label>`}
       ${isObj&&P.length?`<select class="epri" aria-label="Weekly priority"><option value="">No weekly priority</option>${P.map((p,i)=>`<option value="${p.id}">P${i+1} · ${esc(p.text)}</option>`).join("")}</select>`:""}
       <select class="emove" aria-label="Move">${moveOptions(x.date,x.b)}</select>
       <div class="erow"><button class="primary" data-act="esave">Save</button><button data-act="ecancel">Cancel</button></div>`;
     row.replaceChildren(form); row.removeAttribute("draggable");
     const inp=form.querySelector(".etext"); inp.value=f.item.text;
     if(form.querySelector(".epri")) form.querySelector(".epri").value=f.item.pri||"";
+    if(form.querySelector(".etime")) form.querySelector(".etime").value=f.item.time||"";
     inp.focus(); inp.select();
   }
   function commitEdit(row){
@@ -545,6 +560,7 @@
     const id=row.dataset.id, parent=row.dataset.parent;
     const f=findItem(x.target,id,parent); if(!f||!f.item){renderDay(x.date);return}
     const text=form.querySelector(".etext").value.trim(); if(text) f.item.text=text;
+    const tm=form.querySelector(".etime"); if(tm){ if(/^\d{2}:\d{2}$/.test(tm.value)) f.item.time=tm.value; else delete f.item.time }
     const pri=form.querySelector(".epri"); if(pri){ if(pri.value) f.item.pri=pri.value; else delete f.item.pri }
     const mv=form.querySelector(".emove").value;
     row.replaceChildren();
@@ -559,6 +575,7 @@
     const act=t.dataset.act;
     if(act==="edit"){openEdit(t);return}
     if(act==="esave"){commitEdit(t.closest(".it"));return}
+    if(act==="eclear"){const i=t.closest(".edit").querySelector(".etime");if(i){i.value="";i.focus()}return}
     if(act==="ecancel"){t.closest(".it").replaceChildren();renderDay(x.date);return}
     if(act==="mode"){const v=t.dataset.modeV;
       if(x.h!==null){x.target.mode=v} else {x.blk.mode=x.blk.mode===v?null:v}
@@ -607,10 +624,13 @@
     const x=ctx(t);
     if(t.dataset.parent){
       const ob=x.target.items.find(i=>i.id===t.dataset.parent); if(!ob) return;
-      ob.tasks.push({id:uid(),text,done:false});
+      const lt=leadTime(text,x.b); const it={id:uid(),text:lt.text,done:false}; if(lt.time) it.time=lt.time; ob.tasks.push(it);
     }else{
       const kind=kindPref[t.id]||"task";
-      x.target.items.push(kind==="obj"?{id:uid(),kind:"obj",text,tasks:[]}:{id:uid(),kind:"task",text,done:false});
+      const lt=leadTime(text,x.b);
+      const it=kind==="obj"?{id:uid(),kind:"obj",text:lt.text,tasks:[]}:{id:uid(),kind:"task",text:lt.text,done:false};
+      if(lt.time) it.time=lt.time;
+      x.target.items.push(it);
     }
     saveDay(x.date); renderDay(x.date,t.id);
   });
