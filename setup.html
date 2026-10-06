@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set Up Three-Block Week</title>
+<meta name="description" content="Step-by-step guide to running your own copy of the Three-Block Week planner for your church staff.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='4' width='26' height='7' rx='2' fill='%23e2d5b6'/%3E%3Crect x='3' y='13' width='26' height='7' rx='2' fill='%23121416'/%3E%3Crect x='3' y='22' width='26' height='7' rx='2' fill='%232d7d4e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#e9ecee; --surface:#fff; --ink:#1a1e21; --muted:#5b656c; --line:#d6dce0;
+  --accent:#2a5f8f; --accent-soft:#e3edf6; --rest:#2d7d4e; --rest-soft:#e4f1e9; --warn:#a85a07; --warn-soft:#fdf0e1;
+  --office:#f7f1e3; --office-line:#e2d5b6; --church:#3e2f6b; --edu:#1f5fae; --family:#121416;
+  --code:#f3f5f6;
+  --display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111417; --surface:#191e22; --ink:#e6e9eb; --muted:#9aa4ab; --line:#283037;
+  --accent:#86b6e2; --accent-soft:#1f2c38; --rest:#4fb27a; --rest-soft:#18291f; --warn:#f0a548; --warn-soft:#3a2a14;
+  --office:#2c2920; --office-line:#4a4331; --code:#12171a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111417; --surface:#191e22; --ink:#e6e9eb; --muted:#9aa4ab; --line:#283037;
+  --accent:#86b6e2; --accent-soft:#1f2c38; --rest:#4fb27a; --rest-soft:#18291f; --warn:#f0a548; --warn-soft:#3a2a14;
+  --office:#2c2920; --office-line:#4a4331; --code:#12171a; color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 var(--body);padding:0 16px 64px}
+main{max-width:780px;margin:0 auto}
+a{color:var(--accent)}
+.stripes{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;height:7px;margin:28px 0 18px}
+.stripes i{border-radius:2px}
+h1{font:700 clamp(2rem,6vw,2.8rem)/1.05 var(--display);letter-spacing:-.02em;margin:0 0 10px}
+.lede{font-size:1.08rem;color:var(--muted);margin:0 0 20px;max-width:62ch}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 22px;padding:0;list-style:none}
+.facts li{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.86rem}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:0 0 14px}
+.fill h2{margin-top:0}
+.fill p{margin:0 0 12px;color:var(--muted);font-size:.94rem}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.fields label{display:flex;flex-direction:column;gap:4px;font-size:.84rem;font-weight:600}
+.fields input{font:inherit;font-weight:400;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0}
+.fields small{font-weight:400;color:var(--muted)}
+.progress{display:flex;align-items:center;gap:10px;margin:22px 0 12px;font-size:.9rem;color:var(--muted)}
+.bar{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--rest);transition:width .2s}
+.step{position:relative}
+.step>header{display:flex;gap:12px;align-items:flex-start}
+.num{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:700 .9rem var(--display);background:var(--accent-soft);color:var(--accent)}
+.step.done .num{background:var(--rest);color:#fff}
+.step h2{font:700 1.25rem/1.25 var(--display);margin:2px 0 2px}
+.tag{display:inline-block;font:600 .68rem/1 var(--body);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:4px;margin-left:6px;vertical-align:3px;background:var(--office);color:var(--muted);border:1px solid var(--office-line)}
+.time{font-size:.84rem;color:var(--muted)}
+.step ol{margin:12px 0 0;padding-left:22px}
+.step li{margin:0 0 8px}
+.step li::marker{color:var(--muted);font-weight:600}
+.done-row{display:flex;justify-content:flex-end;margin-top:8px}
+.done-row label{display:inline-flex;gap:8px;align-items:center;font-size:.88rem;font-weight:600;cursor:pointer;padding:6px 12px;border:1px solid var(--line);border-radius:8px}
+.done-row input{width:16px;height:16px;accent-color:var(--rest)}
+.step.done .done-row label{background:var(--rest-soft);border-color:var(--rest);color:var(--rest)}
+code{font:500 .86em var(--mono);background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 5px;overflow-wrap:anywhere}
+.snip{position:relative;margin:8px 0 4px}
+.snip pre{margin:0;background:var(--code);border:1px solid var(--line);border-radius:8px;padding:12px 76px 12px 12px;font:500 .82rem/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.copy{position:absolute;top:8px;right:8px;font:600 .78rem var(--body);padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.note{background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-size:.9rem;margin:10px 0 0}
+.warn{background:var(--warn-soft);color:var(--ink);border-left:3px solid var(--warn)}
+.btnlink{display:inline-block;font-weight:600;text-decoration:none;background:var(--accent);color:#fff;border-radius:8px;padding:6px 12px;margin:2px 0}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btnlink{color:#0d1418}}
+.sec{font:700 .74rem/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:30px 0 10px}
+details.trouble{margin:0 0 8px}
+details.trouble summary{cursor:pointer;font-weight:600}
+details.trouble p{margin:8px 0 4px;color:var(--muted)}
+footer{margin-top:28px;font-size:.88rem;color:var(--muted)}
+@media (max-width:520px){.card{padding:16px}.step ol{padding-left:18px}}
+</style>
+</head>
+<body>
+<main>
+  <div class="stripes" aria-hidden="true"><i style="background:var(--office);box-shadow:inset 0 0 0 1px var(--office-line)"></i><i style="background:#eef0ec;box-shadow:inset 0 0 0 1px #cfd6cc"></i><i style="background:var(--edu)"></i><i style="background:var(--church)"></i><i style="background:var(--family)"></i><i style="background:var(--rest)"></i></div>
+  <h1>Run Three-Block Week for your church</h1>
+  <p class="lede">A weekly planner for ministry staff: every day is Morning, Afternoon and Evening, and each block gets a purpose before it gets a to-do list. This guide sets up your own private copy, with your own staff list and your own data.</p>
+  <ul class="facts">
+    <li>About 1 hour</li><li>Free for a church staff</li><li>No coding, mostly copy and paste</li><li>Works on phone and computer</li>
+  </ul>
+
+  <section class="card fill" aria-labelledby="fillh">
+    <h2 id="fillh" style="font:700 1.1rem var(--display)">Fill these in as you go</h2>
+    <p>The instructions below update to match, so you can copy them exactly. Nothing you type here leaves this page.</p>
+    <div class="fields">
+      <label>Your email <input id="fEmail" type="email" placeholder="pastor@yourchurch.org" autocomplete="email"><small>The address you'll sign in with</small></label>
+      <label>Your Supabase Project URL <input id="fSb" type="url" placeholder="https://abcdefgh.supabase.co"><small>From step 2</small></label>
+      <label>Your site address <input id="fSite" type="url" placeholder="https://yourchurch-planner.vercel.app"><small>From step 4</small></label>
+    </div>
+  </section>
+
+  <div class="progress"><span id="progTxt">0 of 6 required steps done</span><div class="bar"><i id="progBar"></i></div></div>
+
+  <section class="card step" data-step="1" data-req>
+    <header><span class="num">1</span><div><h2>Make your own copy of the code</h2><span class="time">5 minutes · GitHub</span></div></header>
+    <ol>
+      <li>Create a free GitHub account if you don't have one: <a href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup</a>.</li>
+      <li>Open <a class="btnlink" href="https://github.com/trentcornwell/three-block-week/fork" target="_blank" rel="noopener">Fork Three-Block Week</a> and click <b>Create fork</b>. You now have your own copy at <code>github.com/YOUR-NAME/three-block-week</code>.</li>
+    </ol>
+    <div class="done-row"><label><input type="checkbox"> Done</label></div>
+  </section>
+
+  <section class="card step" data-step="2" data-req>
+    <header><span class="num">2</span><div><h2>Create the database</h2><span class="time">10 minutes · Supabase</span></div></header>
+    <ol>
+      <li>Create a free account at <a href="https://supabase.com/dashboard/sign-up" target="_blank" rel="noopener">supabase.com</a>, then <a href="https://supabase.com/dashboard/new" target="_blank" rel="noopener">create a new project</a>. Name it <b>Three-Block Week</b>, choose a region near you (for example East US), and save the database password somewhere safe.</li>
+      <li>When the project is ready, open <a href="https://supabase.com/dashboard/project/_/sql/new" target="_blank" rel="noopener">SQL Editor → New query</a>.</li>
+      <li>Open the <a href="https://raw.githubusercontent.com/trentcornwell/three-block-week/main/supabase/schema.sql" target="_blank" rel="noopener">setup script</a>, select all of it, copy, paste it into the query box, and click <b>Run</b>. If Supabase warns about "destructive operations", click to run it anyway. The project is empty, so nothing is lost.</li>
+      <li>Clear the query box, paste this to put yourself on the staff list, and click <b>Run</b>:
+        <div class="snip"><pre data-tpl="insert into public.staff (email, is_admin) values ('{email}', true);"></pre><button class="copy" type="button">Copy</button></div></li>
+      <li>Open <a href="https://supabase.com/dashboard/project/_/settings/api" target="_blank" rel="noopener">Project Settings → Data API</a> and copy the <b>Project URL</b> into the box at the top of this page. Then open <a href="https://supabase.com/dashboard/project/_/settings/api-keys" target="_blank" rel="noopener">API Keys</a> and keep the <b>publishable</b> key handy (it starts with <code>sb_publishable_</code>). Both are meant to be public. Never use the secret or service_role key anywhere.</li>
+    </ol>
+    <div class="done-row"><label><input type="checkbox"> Done</label></div>
+  </section>
+
+  <section class="card step" data-step="3" data-req>
+    <header><span class="num">3</span><div><h2>Point your copy at your database</h2><span class="time">3 minutes · GitHub</span></div></header>
+    <ol>
+      <li>In your copy on GitHub, open the file <code>config.js</code> and click the pencil icon to edit it.</li>
+      <li>Replace the two values so they look like this, with your publishable key in place of the placeholder:
+        <div class="snip"><pre data-tpl='  supabaseUrl: "{sb}",
+  supabaseAnonKey: "sb_publishable_PASTE-YOUR-KEY",'></pre><button class="copy" type="button">Copy</button></div></li>
+      <li>Click <b>Commit changes</b>.</li>
+    </ol>
+    <div class="done-row"><label><input type="checkbox"> Done</label></div>
+  </section>
+
+  <section class="card step" data-step="4" data-req>
+    <header><span class="num">4</span><div><h2>Put it online</h2><span class="time">5 minutes · Vercel</span></div></header>
+    <ol>
+      <li>Sign up at <a href="https://vercel.com/signup" target="_blank" rel="noopener">vercel.com</a> with <b>Continue with GitHub</b>.</li>
+      <li>Open <a class="btnlink" href="https://vercel.com/new" target="_blank" rel="noopener">Import a project</a>, pick <b>three-block-week</b>, leave every setting as it is, and click <b>Deploy</b>.</li>
+      <li>When it finishes, Vercel shows your address, something like <code>yourchurch-planner.vercel.app</code>. Put it in the box at the top of this page. You can rename it under <b>Project → Settings → Domains</b>.</li>
+    </ol>
+    <p class="note">From now on, every change saved in your GitHub copy updates the site by itself within a minute.</p>
+    <div class="done-row"><label><input type="checkbox"> Done</label></div>
+  </section>
+
+  <section class="card step" data-step="5" data-req>
+    <header><span class="num">5</span><div><h2>Tell Supabase where your site lives</h2><span class="time">2 minutes · Supabase</span></div></header>
+    <ol>
+      <li>Open <a href="https://supabase.com/dashboard/project/_/auth/url-configuration" target="_blank" rel="noopener">Authentication → URL Configuration</a>.</li>
+      <li>Set <b>Site URL</b> to: <div class="snip"><pre data-tpl="{site}"></pre><button class="copy" type="button">Copy</button></div></li>
+      <li>Under <b>Redirect URLs</b>, click <b>Add URL</b>, paste this, and save: <div class="snip"><pre data-tpl="{site}/**"></pre><button class="copy" type="button">Copy</button></div></li>
+    </ol>
+    <div class="done-row"><label><input type="checkbox"> Done</label></div>
+  </section>
+
+  <section class="card step" data-step="6" data-req>
+    <header><span class="num">6</span><div><h2>Sign in and add your staff</h2><span class="time">5 minutes</span></div></header>
+    <ol>
+      <li>Open your site, type your email, and click <b>Email me a sign-in link</b>. Open the link in the email. You're in.</li>
+      <li>To add staff, open the <a href="https://supabase.com/dashboard/project/_/sql/new" target="_blank" rel="noopener">SQL Editor</a>, change the addresses below, and click <b>Run</b>:
+        <div class="snip"><pre>insert into public.staff (email) values
+  ('associate@yourchurch.org'),
+  ('secretary@yourchurch.org')
+on conflict (email) do nothing;</pre><button class="copy" type="button">Copy</button></div></li>
+      <li>Send them your site address. Each person signs in with an emailed link, plans their own week, and can see everyone else's week (view only).</li>
+    </ol>
+    <p class="note">To remove someone later: <code>delete from public.staff where email = 'name@yourchurch.org';</code></p>
+    <div class="done-row"><label><input type="checkbox"> Done</label></div>
+  </section>
+
+  <p class="sec">Optional extras</p>
+
+  <section class="card step" data-step="7">
+    <header><span class="num">7</span><div><h2>Google sign-in and Google Calendar <span class="tag">Optional</span></h2><span class="time">20 minutes · Google Cloud</span></div></header>
+    <p style="margin:10px 0 0">Shows each person's Google Calendar events inside their blocks, and adds a "Sign in with Google" button. Skip it and everyone uses emailed links.</p>
+    <ol>
+      <li><a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Create a Google Cloud project</a> named <b>Three-Block Week</b>.</li>
+      <li>Turn on the <a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noopener">Google Calendar API</a> (click <b>Enable</b>).</li>
+      <li>Open <a href="https://console.cloud.google.com/auth/overview" target="_blank" rel="noopener">Google Auth Platform</a> and click <b>Get started</b>. App name: <b>Three-Block Week</b>. Audience: <b>External</b>. Add your email as the contact.</li>
+      <li>Under <a href="https://console.cloud.google.com/auth/scopes" target="_blank" rel="noopener">Data Access</a>, click <b>Add or remove scopes</b>, tick <code>.../auth/calendar.readonly</code>, and save.</li>
+      <li>Under <a href="https://console.cloud.google.com/auth/audience" target="_blank" rel="noopener">Audience</a>, add every staff member's Google address as a <b>test user</b> (type them in lowercase). Up to 100 people can use it this way.</li>
+      <li>Under <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noopener">Clients</a>, click <b>Create client</b>, choose <b>Web application</b>, and add this <b>Authorized redirect URI</b>:
+        <div class="snip"><pre data-tpl="{sb}/auth/v1/callback"></pre><button class="copy" type="button">Copy</button></div>
+        Create it, then copy the <b>Client ID</b> and <b>Client secret</b>.</li>
+      <li>In Supabase, open <a href="https://supabase.com/dashboard/project/_/auth/providers" target="_blank" rel="noopener">Authentication → Sign In / Providers → Google</a>, turn it on, paste the Client ID and secret, and save.</li>
+    </ol>
+    <p class="note">The first time, Google may say the app "hasn't been verified". That's expected for a private app. Click <b>Continue</b>. Each person only ever sees their own calendar, read-only, and can pick which of their calendars to show.</p>
+    <div class="done-row"><label><input type="checkbox"> Done</label></div>
+  </section>
+
+  <section class="card step" data-step="8">
+    <header><span class="num">8</span><div><h2>Basecamp to-dos and schedule <span class="tag">Optional</span></h2><span class="time">15 minutes · Basecamp + Vercel</span></div></header>
+    <p style="margin:10px 0 0">Shows each person's assigned Basecamp to-dos in a tray they can plan from, and lets staff tick <b>BC</b> on blocks and items to put them on a Basecamp project's Schedule.</p>
+    <ol>
+      <li>Go to <a href="https://launchpad.37signals.com/integrations" target="_blank" rel="noopener">launchpad.37signals.com/integrations</a> and click <b>Register another application</b>. Name: <b>Three-Block Week</b>. Website: your site address. Products: <b>Basecamp 4</b>. Redirect URI:
+        <div class="snip"><pre data-tpl="{site}/api/basecamp/callback"></pre><button class="copy" type="button">Copy</button></div></li>
+      <li>Basecamp shows a <b>Client ID</b> and <b>Client Secret</b>. In Vercel, open your project → <b>Settings → Environment Variables</b> and add two:
+        <div class="snip"><pre>BASECAMP_CLIENT_ID      (paste the Client ID)
+BASECAMP_CLIENT_SECRET  (paste the Client Secret)</pre><button class="copy" type="button">Copy</button></div></li>
+      <li>In Vercel, open <b>Deployments</b>, click <b>⋯</b> on the newest one, and choose <b>Redeploy</b>.</li>
+      <li>In your planner, each person clicks <b>Connect Basecamp</b> once.</li>
+      <li>To post the staff week to a project, one person opens <b>Staff week in Basecamp → Choose a project…</b> in the Basecamp tray. Only items with <b>BC</b> ticked are posted.</li>
+      <li>To add a shortcut inside Basecamp: in the project, choose <b>Add a link</b> (under the project's tools), pick <b>External Service</b>, and paste your site address.</li>
+    </ol>
+    <div class="done-row"><label><input type="checkbox"> Done</label></div>
+  </section>
+
+  <section class="card step" data-step="9">
+    <header><span class="num">9</span><div><h2>Your own web address <span class="tag">Optional</span></h2><span class="time">10 minutes</span></div></header>
+    <ol>
+      <li>In Vercel, open <b>Project → Settings → Domains</b> and add the address you want, such as <code>planner.yourchurch.org</code>.</li>
+      <li>Vercel shows one DNS record (usually a CNAME). Add it wherever your church's domain is managed.</li>
+      <li>Add the new address to Supabase's <b>Redirect URLs</b> (step 5) as <code>https://planner.yourchurch.org/**</code>, and update the Basecamp redirect URI (step 8) if you set that up.</li>
+    </ol>
+    <div class="done-row"><label><input type="checkbox"> Done</label></div>
+  </section>
+
+  <p class="sec">If something goes wrong</p>
+  <section class="card">
+    <details class="trouble"><summary>"That address isn't on the staff list yet"</summary><p>Add the exact email the person signs in with (step 6). Google and Basecamp sometimes use a different address than people expect.</p></details>
+    <details class="trouble"><summary>The sign-in link opens the wrong site or an error page</summary><p>Check step 5: the Site URL and Redirect URL must match your site address exactly, starting with https://.</p></details>
+    <details class="trouble"><summary>The page says "Couldn't load the planner"</summary><p>Check config.js (step 3): the Project URL and publishable key must both be from your Supabase project, inside quotes.</p></details>
+    <details class="trouble"><summary>Google says "access blocked" or "ineligible accounts"</summary><p>Add the person as a test user (step 7). Type the address in all lowercase.</p></details>
+    <details class="trouble"><summary>The planner went quiet after a week of no use</summary><p>Free Supabase projects pause after about a week without use. Open your Supabase dashboard and click <b>Resume</b>. Daily use keeps it awake.</p></details>
+  </section>
+
+  <footer>Three-Block Week is free to copy and adapt. <a href="/">Back to the planner</a></footer>
+</main>
+<script>
+(function(){
+  const KEY="tbw-setup-v1";
+  let st={}; try{st=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(e){st={}}
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
+  const f={email:document.getElementById("fEmail"),sb:document.getElementById("fSb"),site:document.getElementById("fSite")};
+  const clean=v=>String(v||"").trim().replace(/\/+$/,"");
+  for(const k in f){ if(st[k]) f[k].value=st[k]; f[k].addEventListener("input",()=>{st[k]=f[k].value;save();fill()}) }
+  function fill(){
+    const v={email:f.email.value.trim()||"you@yourchurch.org",sb:clean(f.sb.value)||"https://YOUR-PROJECT.supabase.co",site:clean(f.site.value)||"https://YOUR-SITE.vercel.app"};
+    if(v.site&&!/^https?:\/\//.test(v.site)) v.site="https://"+v.site;
+    if(v.sb&&!/^https?:\/\//.test(v.sb)) v.sb="https://"+v.sb;
+    document.querySelectorAll("pre[data-tpl]").forEach(p=>{p.textContent=p.dataset.tpl.replace(/\{(\w+)\}/g,(_,k)=>v[k]||"")});
+  }
+  fill();
+  const steps=[...document.querySelectorAll(".step")];
+  function prog(){
+    const req=steps.filter(s=>s.hasAttribute("data-req")); const n=req.filter(s=>s.classList.contains("done")).length;
+    document.getElementById("progTxt").textContent=`${n} of ${req.length} required steps done`;
+    document.getElementById("progBar").style.width=(n/req.length*100)+"%";
+  }
+  steps.forEach(s=>{const id=s.dataset.step, cb=s.querySelector(".done-row input");
+    if(st["s"+id]){cb.checked=true;s.classList.add("done")}
+    cb.addEventListener("change",()=>{s.classList.toggle("done",cb.checked);st["s"+id]=cb.checked;save();prog()})});
+  prog();
+  document.querySelectorAll(".copy").forEach(b=>b.addEventListener("click",async()=>{
+    const t=b.previousElementSibling.textContent;
+    try{await navigator.clipboard.writeText(t);b.textContent="Copied"}catch(e){const r=document.createRange();r.selectNodeContents(b.previousElementSibling);const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent="Selected"}
+    setTimeout(()=>b.textContent="Copy",1500);
+  }));
+})();
+</script>
+</body>
+</html>

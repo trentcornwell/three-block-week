@@ -1,6 +1,8 @@
 # Three-Block Week
 
-A weekly planner for the Vision Baptist pastoral staff. Every day is split into Morning, Afternoon and Evening, and each block gets a type: Work · Office, Work · Remote, On-Going Education, Church Gathering, Family, or Rest. Work blocks hold objectives (with tasks under them) and standalone tasks. Each staff member plans their own week, and everyone can see the team's.
+**Setting this up for your church? Follow the step-by-step guide at https://three-block-week.vercel.app/setup** (or open `setup.html` in your own copy).
+
+A weekly planner for church staff. Every day is split into Morning, Afternoon and Evening, and each block gets a type: Work · Office, Work · Remote, On-Going Education, Church Gathering, Family, or Rest. Work blocks hold objectives (with tasks under them) and standalone tasks. Each staff member plans their own week, and everyone can see the team's.
 
 It's a plain website (no build step) that keeps its data in Supabase:
 
@@ -45,7 +47,7 @@ The first time someone signs in, Google may show a screen saying the app isn't v
 
 ### 3. GitHub and Vercel (hosting)
 
-1. The code lives in the GitHub repo `three-block-week`.
+1. Fork https://github.com/trentcornwell/three-block-week to your own GitHub account.
 2. Create a free account at [vercel.com](https://vercel.com) using **Continue with GitHub**.
 3. **Add New → Project →** import `three-block-week`. Leave Framework Preset as **Other**, with no build command and the root folder as-is. Click **Deploy**.
 4. Vercel gives you an address like `three-block-week.vercel.app`. Every change pushed to GitHub redeploys automatically.
@@ -53,29 +55,25 @@ The first time someone signs in, Google may show a screen saying the app isn't v
 ### 4. Tell Supabase where the site lives
 
 In Supabase **Authentication → URL Configuration**:
-- **Site URL:** your site address, e.g. `https://planner.visionbaptist.org`, or the vercel.app address for now.
-- **Redirect URLs:** add `https://three-block-week.vercel.app/**` and, once it's set up, `https://planner.visionbaptist.org/**`.
+- **Site URL:** your site address, e.g. `https://yourchurch-planner.vercel.app`.
+- **Redirect URLs:** add your site address followed by `/**`.
 
 Sign-in links and Google sign-in only return to addresses listed here.
 
 ### 5. Your own address (optional)
 
-1. In Vercel go to **Project → Settings → Domains** and add `planner.visionbaptist.org`.
-2. Vercel shows one DNS record to add, usually a **CNAME** pointing to `cname.vercel-dns.com`. Add it wherever visionbaptist.org's DNS is managed.
+1. In Vercel go to **Project → Settings → Domains** and add an address such as `planner.yourchurch.org`.
+2. Vercel shows one DNS record to add, usually a **CNAME** pointing to `cname.vercel-dns.com`. Add it wherever your church's domain is managed.
 3. Add the new address to Supabase's Redirect URLs (step 4).
-
-### 6. Bring over your Claude entries
-
-Sign in to the new site once. Claude then imports the weeks you entered in the Claude version. That data is kept out of this repo on purpose.
 
 ### 7. Basecamp to-dos (optional)
 
 This shows each person's assigned Basecamp to-dos in a tray inside the planner. You can plan any to-do into a block, and checking it off in either place checks it off in Basecamp.
 
 1. Go to [launchpad.37signals.com/integrations](https://launchpad.37signals.com/integrations) and click **Register another application**.
-   - Name: `Three-Block Week`. Company: `Vision Baptist Church`. Website: `https://three-block-week.vercel.app`.
+   - Name: `Three-Block Week`. Company: your church. Website: your site address.
    - Products: **Basecamp 4**.
-   - Redirect URI: `https://three-block-week.vercel.app/api/basecamp/callback`
+   - Redirect URI: your site address followed by `/api/basecamp/callback`
 2. Basecamp then shows a **Client ID** and a **Client Secret**. In Vercel, open the project, go to **Settings → Environment Variables**, and add:
    - `BASECAMP_CLIENT_ID` with the Client ID
    - `BASECAMP_CLIENT_SECRET` with the Client Secret

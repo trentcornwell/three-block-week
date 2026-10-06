@@ -47,7 +47,7 @@ function sharedFor(day) {
 function render(ws, data) {
   const days = {}; for (const d of data.days || []) (days[d.user_id] || (days[d.user_id] = {}))[String(d.date).slice(0, 10)] = d.data;
   const dates = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
-  let html = `<div><em>What each staff member chose to share from their week. Open the planner to make changes: <a href="https://three-block-week.vercel.app">three-block-week.vercel.app</a></em></div>`;
+  let html = `<div><em>What each staff member chose to share from their week. ${L.SITE ? `Open the planner to make changes: <a href="${L.SITE}">${L.SITE.replace(/^https:\/\//, "")}</a>` : ""}</em></div>`;
   let any = false;
   for (const p of data.people || []) {
     const mine = days[p.id] || {}, lines = [];

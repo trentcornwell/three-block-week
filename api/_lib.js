@@ -1,11 +1,15 @@
 // Shared helpers for the Basecamp connection (files starting with "_" are not routes on Vercel).
 const crypto = require("node:crypto");
 
-const SB_URL = process.env.SUPABASE_URL || "https://roaxulhdehqwqcjefxce.supabase.co";
-const SB_KEY = process.env.SUPABASE_ANON_KEY || "sb_publishable_Pg7EXQgFfUdYuWfLA1gImg_-1IsPOGw";
+// The same public settings the page uses (config.js), so each copy of the planner talks to its own database.
+const CFG = require("../config.js");
+const SB_URL = process.env.SUPABASE_URL || CFG.supabaseUrl;
+const SB_KEY = process.env.SUPABASE_ANON_KEY || CFG.supabaseAnonKey;
+// This site's own address (Vercel provides it), used in links and when talking to Basecamp.
+const SITE = process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "");
 const BC_ID = process.env.BASECAMP_CLIENT_ID || "";
 const BC_SECRET = process.env.BASECAMP_CLIENT_SECRET || "";
-const UA = "Three-Block Week (https://three-block-week.vercel.app)";
+const UA = `Three-Block Week (${SITE || "https://github.com/trentcornwell/three-block-week"})`;
 const LAUNCHPAD = "https://launchpad.37signals.com";
 
 const configured = () => !!(BC_ID && BC_SECRET);
@@ -151,4 +155,4 @@ function send(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
-module.exports = { SB_URL, LAUNCHPAD, BC_ID, UA, configured, redirectUri, origin, seal, open, signState, readState, planUser, rest, tokenRequest, loadLink, bc, send, publishKey, rpc, refreshIfNeeded };
+module.exports = { SITE, SB_URL, LAUNCHPAD, BC_ID, UA, configured, redirectUri, origin, seal, open, signState, readState, planUser, rest, tokenRequest, loadLink, bc, send, publishKey, rpc, refreshIfNeeded };

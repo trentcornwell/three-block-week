@@ -47,5 +47,6 @@
     "api/basecamp/publish.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "cleanUrls": true
 }
