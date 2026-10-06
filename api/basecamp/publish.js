@@ -204,7 +204,15 @@ async function publishWeekLocked(ws, force, key) {
     const body = render(ws, data);
     const hash = crypto.createHash("sha256").update(body).digest("hex").slice(0, 16);
     const title = `Staff week · ${rangeTitle(ws)}`;
-    if (!(doc.id && doc.hash === hash && !force)) {
+    const empty = !(data.days || []).some(d => sharedFor(d.data || {}).length);
+    if (empty) {
+      // Nothing shared this week: no document. Move any earlier one to Basecamp's trash.
+      if (doc.id) {
+        try { await L.bc(link, "PUT", `/buckets/${s.bucket_id}/recordings/${doc.id}/status/trashed.json`); }
+        catch (e) { if (e.status !== 404 && e.status !== 403) throw e; }
+        delete doc.id; delete doc.url; delete doc.hash;
+      }
+    } else if (!(doc.id && doc.hash === hash && !force)) {
       let out = null;
       if (doc.id) {
         try { out = await L.bc(link, "PUT", `/buckets/${s.bucket_id}/documents/${doc.id}.json`, { title, content: body }); }
@@ -229,7 +237,7 @@ async function publishWeekLocked(ws, force, key) {
     err = e.code === "nolink" || !e.status ? e.message : e.status === 403 || e.status === 404 ? "Basecamp wouldn't let this account post to that project. Check access, or set up posting again." : `Basecamp said ${e.status}. Will try again.`;
   }
   // Always save entry ids we created, even after an error, so nothing is duplicated next time.
-  const save = doc.id || Object.keys(doc.entries).length ? doc : null;
+  const save = doc;
   await L.rpc("publish_save", { p_key: key, p_week: save ? ws : null, p_doc: save, p_error: err || info.note || null, p_blob: newBlob });
   if (err) return { error: err };
   return { url: doc.url, ...(info.partial ? { more: true } : {}), ...(info.note ? { note: info.note } : {}) };
