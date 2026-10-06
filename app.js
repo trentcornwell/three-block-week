@@ -211,6 +211,9 @@
       if(calMsg==="connect") cs.innerHTML=`Show your Google Calendar events inside each block. <button class="btn" id="calConnect">Connect Google Calendar</button>`;
       else cs.textContent=calMsg;
       cs.hidden=false
+    } else if(viewing===me&&calList&&calList.length>1){
+      if(!cs.querySelector("details[open]")) cs.innerHTML=calPickHTML();
+      cs.hidden=false;
     } else cs.hidden=true;
   }
   let teamSeq=0;
@@ -394,12 +397,27 @@
         do{slot(key(d)).allDay.push(title);d=addDays(d,1);guard++}while(key(d)<ed&&guard<31);
       }else if(ev.start&&ev.start.dateTime){
         const d=new Date(ev.start.dateTime); if(isNaN(d)) continue;
-        const h=d.getHours(), b=h<12?"m":h<17?"a":"e";
+        const h=d.getHours(), b=h<12?"m":h<16?"a":"e";
         slot(key(d))[b].push({time:d.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}),title,t:d.getTime()});
       }
     }
     Object.values(out).forEach(s=>["m","a","e"].forEach(b=>s[b].sort((x,y)=>x.t-y.t)));
     return out;
+  }
+  let calList=null;
+  // Which Google calendars to show: saved per person; defaults to their main calendar.
+  function calIds(){
+    const saved=(getMeta(me).calendars||{}).ids;
+    const known=calList?new Set(calList.map(c=>c.id)):null;
+    const ids=Array.isArray(saved)&&saved.length?saved.filter(id=>!known||known.has(id)):[];
+    return ids.length?ids:["primary"];
+  }
+  function calPickHTML(){
+    if(!calList||!calList.length) return "";
+    const on=new Set(calIds().map(id=>id==="primary"?(calList.find(c=>c.primary)||{}).id:id));
+    const names=calList.filter(c=>on.has(c.id)).map(c=>c.primary?"Main":c.name);
+    return `<details class="calpick"><summary>Google calendars shown: <strong>${esc(names.join(", ")||"Main")}</strong> · change</summary>
+      <div class="calopts">${calList.map(c=>`<label><input type="checkbox" data-cal="${esc(c.id)}"${on.has(c.id)?" checked":""}><i style="background:${esc(c.color||"#888")}"></i>${esc(c.primary?c.name+" (main)":c.name)}</label>`).join("")}</div></details>`;
   }
   async function loadCal(){
     clearTimeout(calTimer);
@@ -409,12 +427,27 @@
     const ws=wsKey();
     const q=new URLSearchParams({timeMin:weekStart.toISOString(),timeMax:addDays(weekStart,7).toISOString(),singleEvents:"true",orderBy:"startTime",maxResults:"250"});
     try{
-      const r=await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events?"+q,{headers:{Authorization:"Bearer "+tok}});
+      const H={headers:{Authorization:"Bearer "+tok}};
+      if(!calList){
+        const lr=await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=100",H);
+        if(lr.status===401||lr.status===403) throw Object.assign(new Error("auth"),{auth:true});
+        if(lr.ok) calList=((await lr.json()).items||[]).filter(c=>!c.hidden).map(c=>({id:c.id,name:c.summaryOverride||c.summary||c.id,primary:!!c.primary,color:c.backgroundColor||""}));
+      }
+      const ids=calIds();
+      const res=await Promise.all(ids.map(id=>fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(id)}/events?`+q,H)));
       if(ws!==wsKey()) return;
-      if(r.status===401||r.status===403){try{localStorage.removeItem(GTOKEN)}catch(e){};calBy={};calMsg="connect"}
-      else if(!r.ok) calMsg="Google Calendar couldn't refresh just now. Showing the last events loaded.";
-      else {calBy=parseCal(await r.json());calMsg=""}
-    }catch(e){calMsg="Google Calendar couldn't refresh just now. Showing the last events loaded."}
+      if(res.some(x=>x.status===401)) throw Object.assign(new Error("auth"),{auth:true});
+      const ok=res.filter(x=>x.ok);
+      if(!ok.length&&res.length) calMsg="Google Calendar couldn't refresh just now. Showing the last events loaded.";
+      else{
+        const items=[]; for(const x of ok) items.push(...((await x.json()).items||[]));
+        items.sort((a,b)=>String((a.start&&(a.start.dateTime||a.start.date))||"").localeCompare(String((b.start&&(b.start.dateTime||b.start.date))||"")));
+        calBy=parseCal({items});calMsg="";
+      }
+    }catch(e){
+      if(e.auth){try{localStorage.removeItem(GTOKEN)}catch(_){};calBy={};calList=null;calMsg="connect"}
+      else calMsg="Google Calendar couldn't refresh just now. Showing the last events loaded.";
+    }
     requestFull();
     calTimer=setTimeout(loadCal,300000);
   }
@@ -475,6 +508,13 @@
   $("#signOut").onclick=async()=>{try{localStorage.removeItem(GTOKEN)}catch(e){}; await sb.auth.signOut(); location.reload()};
   document.querySelectorAll("[data-signout]").forEach(b=>b.onclick=$("#signOut").onclick);
   $("#calStatus").addEventListener("click",e=>{ if(e.target.closest("#calConnect")) signInGoogle() });
+  $("#calStatus").addEventListener("change",e=>{
+    const t=e.target; if(!t.dataset||!t.dataset.cal) return;
+    const ids=[...$("#calStatus").querySelectorAll("[data-cal]")].filter(x=>x.checked).map(x=>x.dataset.cal);
+    getMeta(me).calendars={ids:ids.length?ids:["primary"]}; saveMeta("calendars");
+    const sum=$("#calStatus summary strong"); if(sum) sum.textContent=calList.filter(c=>ids.includes(c.id)).map(c=>c.primary?"Main":c.name).join(", ")||"Main";
+    loadCal();
+  });
 
   /* ---------- editing: context + moves ---------- */
   function ctxAt(date,b,h){
