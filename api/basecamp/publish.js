@@ -128,9 +128,18 @@ async function basecampPeopleIds(link, s, data) {
   const out = {};
   try {
     const ppl = await L.bc(link, "GET", `/projects/${s.bucket_id}/people.json`);
+    const norm = x => String(x || "").toLowerCase().replace(/[^a-z]/g, "");
     const byEmail = Object.fromEntries((ppl || []).map(p => [String(p.email_address || "").toLowerCase(), p.id]));
-    for (const p of data.people || []) { const id = byEmail[String(p.email || "").toLowerCase()]; if (id) out[p.id] = id; }
+    const byName = Object.fromEntries((ppl || []).map(p => [norm(p.name), p.id]));
+    for (const p of data.people || []) {
+      const id = byEmail[String(p.email || "").toLowerCase()] || byName[norm(p.name)];
+      if (id) out[p.id] = id;
+    }
   } catch (e) { /* participants are optional */ }
+  // The person whose Basecamp posts these entries is always tagged on their own entries.
+  if (!out[s.publisher]) {
+    try { const me = await L.bc(link, "GET", "/my/profile.json"); if (me && me.id) out[s.publisher] = me.id; } catch (e) {}
+  }
   return out;
 }
 
