@@ -39,6 +39,7 @@ function blockNotes(conts, split) {
     let h = split && c.mode ? `<div><strong>${esc(TYPE[c.mode])}</strong></div>` : "";
     if (evs.length) h += `<div><strong>Events</strong></div><ul>${evs.map(e => `<li>${e.time ? fmtTime(e.time) + " " : ""}${esc(e.text)}</li>`).join("")}</ul>`;
     if (objs.length) h += `<div><strong>Objectives</strong></div><ul>${objs.map(o => `<li>${esc(o.text)}${(o.tasks || []).length ? `<ul>${o.tasks.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>` : ""}</li>`).join("")}</ul>`;
+    if (convs.length) h += `<div><strong>Conversations</strong></div><ul>${convs.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>`;
     if (tasks.length) h += `<div><strong>Tasks</strong></div><ul>${tasks.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>`;
     if (brks.length) h += `<div>${brks.map(x => `Break: ${esc(x.text || "errand")}`).join("<br>")}</div>`;
     if (h) parts.push(h);
