@@ -123,7 +123,7 @@
           ${readOnly?"":chipsHTML(hf.mode,SPLITTABLE,readOnly,`${label} ${h?"second":"first"} half`)}
           <div class="bbody">${listHTML(hf,`${base}-${h}`,readOnly)}</div>
         </div>`).join("");
-      return `<div class="block is-split" data-date="${date}" data-b="${b}">
+      return `<div class="block is-split${blk.share?" shared":""}" data-date="${date}" data-b="${b}">
         <div class="bhead"><span class="bname">${label} · split</span>${shareBox(blk.share,readOnly,true)}${readOnly?"":`<button class="split-btn" data-act="merge">Merge halves</button>`}</div>
         ${calHTML(date,b)}
         <div class="halves">${halves}</div>
@@ -133,7 +133,7 @@
     const n=countItems(blk);
     const kept=readOnly?"":(n?`${n} item${n>1?"s":""} kept for later`:"Protected time");
     const canSplit=!readOnly&&(!mode||SPLITTABLE.includes(mode));
-    return `<div class="block" data-date="${date}" data-b="${b}" ${mode?`data-mode="${mode}"`:""}>
+    return `<div class="block${blk.share&&mode?" shared":""}" data-date="${date}" data-b="${b}" ${mode?`data-mode="${mode}"`:""}>
       <div class="bhead"><span class="bname">${label}</span>${mode?shareBox(blk.share,readOnly,true):""}${mode?`<span class="btype">${TYPE_NAME[mode]||""}</span>`:""}</div>
       ${chipsHTML(mode,TYPES.map(t=>t[0]),readOnly,label)}
       ${calHTML(date,b)}
@@ -662,7 +662,7 @@
     const t=e.target; if(ro()) return;
     if(t.dataset.act==="kind"){const x=ctx(t);if(!x)return;const inId=`in-${x.ids}`;const k=kindPref[inId]=t.value;
       t.dataset.kind=k;const inp=document.getElementById(inId);if(inp){inp.placeholder=KIND_PH[k];inp.focus()}return}
-    if(t.dataset.act==="share-blk"){const x=ctx(t);if(!x)return;if(t.checked)x.blk.share=true;else delete x.blk.share;t.closest(".shr").classList.toggle("on",t.checked);saveDay(x.date);setStatus(t.checked?"Will show on the Basecamp Schedule":"Taken off the Basecamp Schedule");return}
+    if(t.dataset.act==="share-blk"){const x=ctx(t);if(!x)return;if(t.checked)x.blk.share=true;else delete x.blk.share;t.closest(".shr").classList.toggle("on",t.checked);t.closest(".block").classList.toggle("shared",t.checked);saveDay(x.date);setStatus(t.checked?"This block and everything in it will show on the Basecamp Schedule":"Taken off the Basecamp Schedule");return}
     if(t.dataset.act==="share"){const x=ctx(t);if(!x)return;const li=t.closest("[data-id]");const f=findItem(x.target,li.dataset.id,li.dataset.parent);if(!f||!f.item)return;
       if(t.checked)f.item.share=true;else delete f.item.share;t.closest(".shr").classList.toggle("on",t.checked);saveDay(x.date);setStatus(t.checked?"Will show on the Basecamp Schedule":"Taken off the Basecamp Schedule");return}
     if(t.dataset.act!=="check") return; const x=ctx(t);

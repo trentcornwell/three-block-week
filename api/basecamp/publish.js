@@ -28,16 +28,36 @@ function rangeTitle(ws) {
 const byTime = list => [...list.filter(i => i.time).sort((x, y) => (x.time < y.time ? -1 : 1)), ...list.filter(i => !i.time)];
 
 // What each person chose to share: blocks and items they checked "BC" on, in time order.
+// Notes for a block: its events, objectives (with their tasks) and tasks, as Basecamp-friendly HTML.
+function blockNotes(conts, split) {
+  const parts = [];
+  for (const c of conts) {
+    const items = c.items || [];
+    const evs = byTime(items.filter(i => i.kind === "event")), objs = items.filter(i => i.kind === "obj");
+    const tasks = items.filter(i => i.kind === "task" || !i.kind), brks = items.filter(i => i.kind === "break");
+    const mark = t => (t.done ? "✓ " : "");
+    let h = split && c.mode ? `<div><strong>${esc(TYPE[c.mode])}</strong></div>` : "";
+    if (evs.length) h += `<div><strong>Events</strong></div><ul>${evs.map(e => `<li>${e.time ? fmtTime(e.time) + " " : ""}${esc(e.text)}</li>`).join("")}</ul>`;
+    if (objs.length) h += `<div><strong>Objectives</strong></div><ul>${objs.map(o => `<li>${esc(o.text)}${(o.tasks || []).length ? `<ul>${o.tasks.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>` : ""}</li>`).join("")}</ul>`;
+    if (tasks.length) h += `<div><strong>Tasks</strong></div><ul>${tasks.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>`;
+    if (brks.length) h += `<div>${brks.map(x => `Break: ${esc(x.text || "errand")}`).join("<br>")}</div>`;
+    if (h) parts.push(h);
+  }
+  return parts.join("<br>");
+}
+
+// What each person chose to share. A ticked block becomes one entry with everything in it as notes.
+// Items ticked on their own (in a block that isn't ticked) become their own entries.
 function sharedFor(day) {
   const out = [];
   for (const [b, bl] of BLOCKS) {
     const blk = (day.blocks || {})[b]; if (!blk) continue;
     const conts = blk.split ? (blk.halves || []) : [blk];
     const modes = conts.map(c => c.mode && TYPE[c.mode]).filter(Boolean);
-    if (blk.share && modes.length) out.push({ key: `b:${b}`, b, bl, kind: "block", text: `${bl}: ${modes.join(" / ")}` });
+    if (blk.share && modes.length) { out.push({ key: `b:${b}`, b, bl, kind: "block", text: modes.join(" / "), notes: blockNotes(conts, !!blk.split) }); continue; }
     for (const c of conts) for (const i of c.items || []) {
-      if (i.share && (i.kind === "event" || i.kind === "obj" || i.kind === "task" || !i.kind)) out.push({ key: `i:${i.id}`, b, bl, kind: i.kind || "task", text: i.text, time: i.kind === "event" ? i.time : null });
-      if (i.kind === "obj") for (const t of i.tasks || []) if (t.share) out.push({ key: `i:${t.id}`, b, bl, kind: "task", text: t.text, time: null });
+      if (i.share && (i.kind === "event" || i.kind === "obj" || i.kind === "task" || !i.kind)) out.push({ key: `i:${i.id}`, b, bl, kind: i.kind || "task", text: i.text, time: i.kind === "event" ? i.time : null, notes: i.kind === "obj" && (i.tasks || []).length ? `<ul>${i.tasks.map(t => `<li>${t.done ? "✓ " : ""}${esc(t.text)}</li>`).join("")}</ul>` : "" });
+      if (i.kind === "obj") for (const t of i.tasks || []) if (t.share && !i.share) out.push({ key: `i:${t.id}`, b, bl, kind: "task", text: t.text, time: null, notes: "" });
     }
   }
   return out;
@@ -54,7 +74,7 @@ function render(ws, data) {
     for (const k of dates) {
       const day = mine[k]; if (!day) continue;
       const items = sharedFor(day); if (!items.length) continue;
-      lines.push(`<li><strong>${label(k)}</strong><ul>${items.map(x => `<li>${x.kind === "block" ? `<strong>${esc(x.text)}</strong> (${HRS[x.b]})` : `${x.bl}: ${x.time ? fmtTime(x.time) + " " : ""}${esc(x.text)}`}</li>`).join("")}</ul></li>`);
+      lines.push(`<li><strong>${label(k)}</strong><ul>${items.map(x => `<li>${x.kind === "block" ? `<strong>${HRS[x.b]} · ${esc(x.text)}</strong>${x.notes || ""}` : `${x.time ? fmtTime(x.time) : HRS[x.b]} · ${esc(x.text)}${x.notes || ""}`}</li>`).join("")}</ul></li>`);
     }
     if (!lines.length) continue;
     any = true;
@@ -97,7 +117,7 @@ function desiredEntries(ws, data, peopleIds) {
     for (const x of sharedFor(d.data || {})) {
       const st = x.time || SPAN[x.b][0], en = x.time ? addHour(x.time) : SPAN[x.b][1];
       const k = x.kind === "block" ? `b:${d.user_id}:${date}:${x.b}` : `e:${d.user_id}:${x.key.slice(2)}`;
-      want[k] = { summary: `${who} · ${x.text}`, starts_at: nyISO(date, st), ends_at: nyISO(date, en), description: "", participant_ids: pids };
+      want[k] = { summary: `${who} · ${x.text}`, starts_at: nyISO(date, st), ends_at: nyISO(date, en), description: x.notes || "", participant_ids: pids };
     }
   }
   return want;
