@@ -75,13 +75,13 @@
     return `<label class="shr${on?" on":""}${blk?" blk":""}" title="Put this on the Basecamp Schedule"><input type="checkbox" data-act="${blk?"share-blk":"share"}"${on?" checked":""} aria-label="Put on the Basecamp Schedule">${blk?"Basecamp":"BC"}</label>`;
   }
   function taskLI(i,readOnly,parent){
-    return `<li class="it task${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done"><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">To-do</a>`:""}${shareBox(i.share,readOnly)}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
+    return `<li class="it task${i.kind==="conv"?" conv":""}${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done"><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">To-do</a>`:""}${shareBox(i.share,readOnly)}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
   }
-  const KINDS=[["obj","Objective"],["task","Task"],["event","Event"]];
-  const KIND_PH={obj:"Add an objective",task:"Add a task",event:"Add an event"};
+  const KINDS=[["obj","Objective"],["task","Task"],["conv","Conversation"],["event","Event"]];
+  const KIND_PH={obj:"Add an objective",task:"Add a task",conv:"Add a conversation",event:"Add an event"};
   function listHTML(o,ids,readOnly){
     const P=pris();
-    const objs=o.items.filter(i=>i.kind==="obj"), tasks=o.items.filter(i=>i.kind!=="obj"&&i.kind!=="break"&&i.kind!=="event"), events=o.items.filter(i=>i.kind==="event"), breaks=o.items.filter(i=>i.kind==="break");
+    const objs=o.items.filter(i=>i.kind==="obj"), tasks=o.items.filter(i=>i.kind!=="obj"&&i.kind!=="break"&&i.kind!=="event"&&i.kind!=="conv"), convs=o.items.filter(i=>i.kind==="conv"), events=o.items.filter(i=>i.kind==="event"), breaks=o.items.filter(i=>i.kind==="break");
     const del=readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`;
     const brkHTML=bk=>{
       let when="1 hr";
@@ -99,7 +99,8 @@
     return `${breaks.length?`<ul class="items">${breaks.map(brkHTML).join("")}</ul>`:""}
       ${events.length?`<div class="sec">Events</div><ul class="items">${byTime(events).map(evHTML).join("")}</ul>`:""}
       ${objs.length?`<div class="sec">Objectives</div><ul class="items">${objs.map(objHTML).join("")}</ul>`:""}
-      ${tasks.length?`${objs.length||events.length?`<div class="sec">Tasks</div>`:""}<ul class="items">${tasks.map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
+      ${convs.length?`<div class="sec">Conversations</div><ul class="items">${convs.map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
+      ${tasks.length?`${objs.length||events.length||convs.length?`<div class="sec">Tasks</div>`:""}<ul class="items">${tasks.map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
       ${!o.items.length?`<div class="empty">Nothing planned yet.</div>`:""}
       ${readOnly?"":`<div class="add">
         <select class="kind" data-act="kind" data-kind="${k}" aria-label="What to add">${KINDS.map(([v,l])=>`<option value="${v}"${v===k?" selected":""}>${l}</option>`).join("")}</select>
@@ -695,7 +696,7 @@
     }else{
       const kind=kindPref[t.id]||"task";
       const lt=kind==="event"?leadTime(text,x.b):{text};
-      const it=kind==="obj"?{id:uid(),kind:"obj",text:lt.text,tasks:[]}:kind==="event"?{id:uid(),kind:"event",text:lt.text}:{id:uid(),kind:"task",text:lt.text,done:false};
+      const it=kind==="obj"?{id:uid(),kind:"obj",text:lt.text,tasks:[]}:kind==="event"?{id:uid(),kind:"event",text:lt.text}:{id:uid(),kind:kind==="conv"?"conv":"task",text:lt.text,done:false};
       if(lt.time) it.time=lt.time;
       x.target.items.push(it);
     }

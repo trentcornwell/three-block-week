@@ -34,11 +34,12 @@ function blockNotes(conts, split) {
   for (const c of conts) {
     const items = c.items || [];
     const evs = byTime(items.filter(i => i.kind === "event")), objs = items.filter(i => i.kind === "obj");
-    const tasks = items.filter(i => i.kind === "task" || !i.kind), brks = items.filter(i => i.kind === "break");
+    const tasks = items.filter(i => i.kind === "task" || !i.kind), convs = items.filter(i => i.kind === "conv"), brks = items.filter(i => i.kind === "break");
     const mark = t => (t.done ? "✓ " : "");
     let h = split && c.mode ? `<div><strong>${esc(TYPE[c.mode])}</strong></div>` : "";
     if (evs.length) h += `<div><strong>Events</strong></div><ul>${evs.map(e => `<li>${e.time ? fmtTime(e.time) + " " : ""}${esc(e.text)}</li>`).join("")}</ul>`;
     if (objs.length) h += `<div><strong>Objectives</strong></div><ul>${objs.map(o => `<li>${esc(o.text)}${(o.tasks || []).length ? `<ul>${o.tasks.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>` : ""}</li>`).join("")}</ul>`;
+    if (convs.length) h += `<div><strong>Conversations</strong></div><ul>${convs.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>`;
     if (tasks.length) h += `<div><strong>Tasks</strong></div><ul>${tasks.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>`;
     if (brks.length) h += `<div>${brks.map(x => `Break: ${esc(x.text || "errand")}`).join("<br>")}</div>`;
     if (h) parts.push(h);
@@ -56,7 +57,7 @@ function sharedFor(day) {
     const modes = conts.map(c => c.mode && TYPE[c.mode]).filter(Boolean);
     if (blk.share && modes.length) { out.push({ key: `b:${b}`, b, bl, kind: "block", text: modes.join(" / "), notes: blockNotes(conts, !!blk.split) }); continue; }
     for (const c of conts) for (const i of c.items || []) {
-      if (i.share && (i.kind === "event" || i.kind === "obj" || i.kind === "task" || !i.kind)) out.push({ key: `i:${i.id}`, b, bl, kind: i.kind || "task", text: i.text, time: i.kind === "event" ? i.time : null, notes: i.kind === "obj" && (i.tasks || []).length ? `<ul>${i.tasks.map(t => `<li>${t.done ? "✓ " : ""}${esc(t.text)}</li>`).join("")}</ul>` : "" });
+      if (i.share && (i.kind === "event" || i.kind === "obj" || i.kind === "task" || i.kind === "conv" || !i.kind)) out.push({ key: `i:${i.id}`, b, bl, kind: i.kind || "task", text: i.text, time: i.kind === "event" ? i.time : null, notes: i.kind === "obj" && (i.tasks || []).length ? `<ul>${i.tasks.map(t => `<li>${t.done ? "✓ " : ""}${esc(t.text)}</li>`).join("")}</ul>` : "" });
       if (i.kind === "obj") for (const t of i.tasks || []) if (t.share && !i.share) out.push({ key: `i:${t.id}`, b, bl, kind: "task", text: t.text, time: null, notes: "" });
     }
   }
