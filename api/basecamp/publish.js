@@ -39,7 +39,6 @@ function blockNotes(conts, split) {
     let h = split && c.mode ? `<div><strong>${esc(TYPE[c.mode])}</strong></div>` : "";
     if (evs.length) h += `<div><strong>Events</strong></div><ul>${evs.map(e => `<li>${e.time ? fmtTime(e.time) + " " : ""}${esc(e.text)}</li>`).join("")}</ul>`;
     if (objs.length) h += `<div><strong>Objectives</strong></div><ul>${objs.map(o => `<li>${esc(o.text)}${(o.tasks || []).length ? `<ul>${o.tasks.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>` : ""}</li>`).join("")}</ul>`;
-    if (convs.length) h += `<div><strong>Conversations</strong></div><ul>${convs.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>`;
     if (tasks.length) h += `<div><strong>Tasks</strong></div><ul>${tasks.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>`;
     if (brks.length) h += `<div>${brks.map(x => `Break: ${esc(x.text || "errand")}`).join("<br>")}</div>`;
     if (h) parts.push(h);
@@ -57,7 +56,7 @@ function sharedFor(day) {
     const modes = conts.map(c => c.mode && TYPE[c.mode]).filter(Boolean);
     if (blk.share && modes.length) { out.push({ key: `b:${b}`, b, bl, kind: "block", text: modes.join(" / "), notes: blockNotes(conts, !!blk.split) }); continue; }
     for (const c of conts) for (const i of c.items || []) {
-      if (i.share && (i.kind === "event" || i.kind === "obj" || i.kind === "task" || i.kind === "conv" || !i.kind)) out.push({ key: `i:${i.id}`, b, bl, kind: i.kind || "task", text: i.text, time: i.kind === "event" ? i.time : null, notes: i.kind === "obj" && (i.tasks || []).length ? `<ul>${i.tasks.map(t => `<li>${t.done ? "✓ " : ""}${esc(t.text)}</li>`).join("")}</ul>` : "" });
+      if (i.share && (i.kind === "event" || i.kind === "obj" || i.kind === "task" || !i.kind)) out.push({ key: `i:${i.id}`, b, bl, kind: i.kind || "task", text: i.text, time: i.kind === "event" ? i.time : null, notes: i.kind === "obj" && (i.tasks || []).length ? `<ul>${i.tasks.map(t => `<li>${t.done ? "✓ " : ""}${esc(t.text)}</li>`).join("")}</ul>` : "" });
       if (i.kind === "obj") for (const t of i.tasks || []) if (t.share && !i.share) out.push({ key: `i:${t.id}`, b, bl, kind: "task", text: t.text, time: null, notes: "" });
     }
   }
@@ -77,9 +76,16 @@ function render(ws, data) {
       const items = sharedFor(day); if (!items.length) continue;
       lines.push(`<li><strong>${label(k)}</strong><ul>${items.map(x => `<li>${x.kind === "block" ? `<strong>${HRS[x.b]} · ${esc(x.text)}</strong>${x.notes || ""}` : `${x.time ? fmtTime(x.time) : HRS[x.b]} · ${esc(x.text)}${x.notes || ""}`}</li>`).join("")}</ul></li>`);
     }
-    if (!lines.length) continue;
+    const convLines = [];
+    for (const k of dates) {
+      const day = mine[k]; if (!day) continue;
+      const cs = [];
+      for (const [, blk] of Object.entries(day.blocks || {})) for (const c of (blk.split ? blk.halves || [] : [blk])) for (const i of c.items || []) if (i.kind === "conv") cs.push(i);
+      if (cs.length) convLines.push(`<li><strong>${label(k)}</strong><ul>${cs.map(i => `<li>${i.done ? "✓ " : ""}${esc(i.text)}</li>`).join("")}</ul></li>`);
+    }
+    if (!lines.length && !convLines.length) continue;
     any = true;
-    html += `<h1>${esc(p.name || p.email || "Staff member")}</h1><ul>${lines.join("")}</ul>`;
+    html += `<h1>${esc(p.name || p.email || "Staff member")}</h1>${lines.length ? `<ul>${lines.join("")}</ul>` : ""}${convLines.length ? `<div><strong>Conversations</strong></div><ul>${convLines.join("")}</ul>` : ""}`;
   }
   return any ? html : html + `<div><br>Nothing has been shared for this week yet.</div>`;
 }
@@ -119,6 +125,17 @@ function desiredEntries(ws, data, peopleIds) {
       const st = x.time || SPAN[x.b][0], en = x.time ? addHour(x.time) : SPAN[x.b][1];
       const k = x.kind === "block" ? `b:${d.user_id}:${date}:${x.b}` : `e:${d.user_id}:${x.key.slice(2)}`;
       want[k] = { summary: `${who} · ${x.text}`, starts_at: nyISO(date, st), ends_at: nyISO(date, en), description: x.notes || "", participant_ids: pids };
+    }
+    // Every conversation goes up automatically: one all-day "Conversations" entry per person per day.
+    const convs = [];
+    for (const [, blk] of Object.entries((d.data || {}).blocks || {})) for (const c of (blk.split ? blk.halves || [] : [blk])) for (const i of c.items || []) if (i.kind === "conv") convs.push(i);
+    if (convs.length) {
+      const open = convs.filter(i => !i.done).length;
+      want[`c:${d.user_id}:${date}`] = {
+        summary: `${who} · Conversations (${open ? `${open} to have` : "all done"})`,
+        starts_at: nyISO(date, "00:00"), ends_at: nyISO(date, "23:59"), all_day: true,
+        description: `<ul>${convs.map(i => `<li>${i.done ? "✓ " : ""}${esc(i.text)}</li>`).join("")}</ul>`, participant_ids: pids
+      };
     }
   }
   return want;
@@ -190,7 +207,7 @@ async function syncSchedule(link, s, want, have, deadline, ws, names, checkpoint
     for (const [k, e] of Object.entries(want)) {
       const sg = sig(e), cur = have[k];
       if (cur && cur.s === sg) continue;
-      const body = { summary: e.summary, starts_at: e.starts_at, ends_at: e.ends_at, description: e.description, participant_ids: e.participant_ids, all_day: false, notify: false };
+      const body = { summary: e.summary, starts_at: e.starts_at, ends_at: e.ends_at, description: e.description, participant_ids: e.participant_ids, all_day: !!e.all_day, notify: false };
       let out = null;
       if (cur && cur.id) {
         try { out = await call("PUT", `/buckets/${s.bucket_id}/schedule_entries/${cur.id}.json`, body); }
@@ -234,7 +251,8 @@ async function publishWeekLocked(ws, force, key) {
     const body = render(ws, data);
     const hash = crypto.createHash("sha256").update(body).digest("hex").slice(0, 16);
     const title = `Staff week · ${rangeTitle(ws)}`;
-    const empty = !(data.days || []).some(d => sharedFor(d.data || {}).length);
+    const hasConv = d => Object.values((d.data || {}).blocks || {}).some(blk => (blk.split ? blk.halves || [] : [blk]).some(c => (c.items || []).some(i => i.kind === "conv")));
+    const empty = !(data.days || []).some(d => sharedFor(d.data || {}).length || hasConv(d));
     if (empty) {
       // Nothing shared this week: no document. Move any earlier one to Basecamp's trash.
       if (doc.id) {
