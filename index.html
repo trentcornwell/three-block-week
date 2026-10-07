@@ -332,6 +332,35 @@ td.today-col{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .block.shared .shr:not(.blk){display:none}
 /* Phone: leave the Basecamp to-dos tray to the computer */
 @media (max-width:700px){#bc{display:none!important}}
+/* Day arrows in the Today view */
+.daynav{display:inline-flex;gap:6px;margin-left:auto}
+.daynav .btn{padding:4px 12px;font-size:1rem;line-height:1.2}
+.weektoggle{display:none}
+/* ---------- Phone ---------- */
+@media (max-width:700px){
+  .ttl p:not(.acct){display:none}
+  .ttl h1{font-size:1.5rem}
+  /* Today first: the week panels fold behind one button */
+  body.tab-today .weektoggle{display:block;width:100%;text-align:left;margin:4px 0 0}
+  body.tab-today:not(.weekopen) #summary,
+  body.tab-today:not(.weekopen) #team,
+  body.tab-today:not(.weekopen) #prio,
+  body.tab-today:not(.weekopen) #legend{display:none!important}
+  /* Type buttons fold away once a block has a type; tap the type name to change it */
+  .block[data-mode]:not(.chips-open)>.types,.half[data-mode]:not(.chips-open)>.types{display:none}
+  .btype[data-act="chips"]{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+  .btype[data-act="chips"]::after{content:" ▾";font-size:.7em;opacity:.7}
+  /* Fewer boxes */
+  .shr:not(.blk){display:none}
+  .split-btn[data-act="split"]{display:none}
+  /* Bigger checkboxes */
+  .it input[type=checkbox],.week.today-view .it input[type=checkbox]{width:22px;height:22px;margin-top:1px}
+  /* Tabs along the bottom, within thumb reach */
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;display:grid;grid-template-columns:repeat(3,1fr);margin:0;border-radius:0;border:0;border-top:1px solid var(--line);background:var(--surface);padding:6px 10px calc(6px + env(safe-area-inset-bottom))}
+  .tabs:has(#tabStaff[hidden]){grid-template-columns:repeat(2,1fr)}
+  .tabs button{padding:10px 0;font-size:.95rem;border-radius:8px}
+  body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+}
 </style>
 <style>
 /* sign-in screen + account line */
@@ -388,6 +417,7 @@ td.today-col{background:color-mix(in srgb,var(--accent) 6%,transparent)}
       <p>Morning, afternoon and evening, every day. Give each block a type and plan the work blocks with objectives and tasks. Each staff member plans their own week, and everyone can see the team's.</p>
       <p class="acct">Signed in as <span id="acct"></span> · <button class="linkbtn" id="signOut">Sign out</button></p>
     </div>
+    <button class="btn weektoggle" id="weekToggle" type="button" aria-expanded="false">This week: summary, priorities &amp; staff ▾</button>
     <nav class="nav" aria-label="Views">
       <div class="tabs" role="group" aria-label="View">
         <button id="tabToday" aria-pressed="false">Today</button>

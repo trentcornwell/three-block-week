@@ -20,6 +20,7 @@
   let me="local", viewing="local", people=[];
   let weekStart=mondayOf(new Date());
   let tab=(window.matchMedia&&window.matchMedia("(max-width: 700px)").matches)?"today":"week";
+  let dayView=null; // the day shown in the Today view (null = today)
   let backend=null, db=null, user=null, mcp=null;
   const kindPref={}, pendingRender={};
   let pendingFull=false, personUnsubs={}, calUnsub=null, calBy={}, calMsg="", outsideLoaded=new Set();
@@ -119,7 +120,7 @@
     const base=`${date}-${b}`;
     if(blk.split){
       const halves=blk.halves.map((hf,h)=>`<div class="half" data-h="${h}" data-mode="${hf.mode}">
-          <div class="hhead"><span class="hname">${h?"Second half":"First half"}</span><span class="btype">${TYPE_NAME[hf.mode]}</span></div>
+          <div class="hhead"><span class="hname">${h?"Second half":"First half"}</span><span class="btype"${readOnly?"":` data-act="chips" role="button" tabindex="0"`}>${TYPE_NAME[hf.mode]}</span></div>
           ${readOnly?"":chipsHTML(hf.mode,SPLITTABLE,readOnly,`${label} ${h?"second":"first"} half`)}
           <div class="bbody">${listHTML(hf,`${base}-${h}`,readOnly)}</div>
         </div>`).join("");
@@ -134,7 +135,7 @@
     const kept=readOnly?"":(n?`${n} item${n>1?"s":""} kept for later`:"Protected time");
     const canSplit=!readOnly&&(!mode||SPLITTABLE.includes(mode));
     return `<div class="block${blk.share&&mode?" shared":""}" data-date="${date}" data-b="${b}" ${mode?`data-mode="${mode}"`:""}>
-      <div class="bhead"><span class="bname">${label}</span>${mode?shareBox(blk.share,readOnly,true):""}${mode?`<span class="btype">${TYPE_NAME[mode]||""}</span>`:""}</div>
+      <div class="bhead"><span class="bname">${label}</span>${mode?shareBox(blk.share,readOnly,true):""}${mode?`<span class="btype"${readOnly?"":` data-act="chips" role="button" tabindex="0"`}>${TYPE_NAME[mode]||""}</span>`:""}</div>
       ${chipsHTML(mode,TYPES.map(t=>t[0]),readOnly,label)}
       ${calHTML(date,b)}
       <div class="bfill"><strong>${TYPE_NAME[mode]||""}</strong>${kept?`<small>${kept}</small>`:""}</div>
@@ -149,6 +150,7 @@
     const carry=!ro()&&date<=tk&&hasUnfinished(d)?`<button class="carry" data-carry="${date}">${date<tk?"Move unfinished to today":"Move unfinished to tomorrow"}</button>`:"";
     return `<section class="day${isToday?" is-today":""}" data-day="${date}" aria-label="${DOW[dt.getDay()]}">
       <div class="dlabel"><span class="dn">${DOW[dt.getDay()]}</span><span class="dd">${MON[dt.getMonth()]} ${dt.getDate()}</span>${isToday?`<span class="today">Today</span>`:""}
+        ${tab==="today"?`<span class="daynav"><button class="btn" data-dayjump="-1" aria-label="Previous day">&lsaquo;</button>${isToday?"":`<button class="btn" data-dayjump="0">Today</button>`}<button class="btn" data-dayjump="1" aria-label="Next day">&rsaquo;</button></span>`:""}
         ${all.length?`<div class="allday">${all.map(t=>`<span>${esc(t)}</span>`).join("")}</div>`:""}${carry}</div>
       ${BLOCKS.map(([b,l])=>blockHTML(date,b,l,d.blocks[b],ro())).join("")}
     </section>`;
@@ -165,9 +167,11 @@
     $("#staff").hidden=!staff; weekEl.hidden=staff; $("#legend").hidden=staff; $("#prio").hidden=staff;
     $("#tools").hidden=staff||tab!=="week"||ro();
     $("#summary").hidden=staff;
+    document.body.classList.toggle("tab-today",tab==="today");
     if(staff){$("#team").hidden=true;$("#viewing").hidden=true;renderBC();renderStaff();return}
     weekEl.classList.toggle("today-view",tab==="today");
-    weekEl.innerHTML=(tab==="today"?[todayKey()]:weekDates()).map(dayHTML).join("");
+    weekEl.innerHTML=(tab==="today"?[dayView||todayKey()]:weekDates()).map(dayHTML).join("");
+    document.body.classList.toggle("tab-today",tab==="today");
     renderSummary(); renderTeam(); renderViewing(); renderPrio(); renderTools(); renderBC();
   }
   function requestFull(){ if(typing()){pendingFull=true;return} renderAll() }
@@ -627,6 +631,8 @@
   /* ---------- block interactions ---------- */
   weekEl.addEventListener("click",e=>{
     const cb=e.target.closest("[data-carry]"); if(cb){ if(!ro()) carry(cb.dataset.carry); return }
+    const dj=e.target.closest("[data-dayjump]"); if(dj){jumpDay(Number(dj.dataset.dayjump));return}
+    const ch=e.target.closest('[data-act="chips"]'); if(ch&&!ro()){(ch.closest(".half")||ch.closest(".block")).classList.toggle("chips-open");return}
     if(ro()) return;
     const t=e.target.closest("[data-act]"); if(!t) return; const x=ctx(t); if(!x) return;
     const act=t.dataset.act;
@@ -976,12 +982,20 @@
   $("#prev").onclick=()=>moveWeek(addDays(weekStart,-7));
   $("#next").onclick=()=>moveWeek(addDays(weekStart,7));
   $("#today").onclick=()=>moveWeek(mondayOf(new Date()));
+  function jumpDay(n){
+    const cur=dayView||todayKey();
+    const next=n===0?todayKey():key(addDays(dateOf(cur),n));
+    dayView=next===todayKey()?null:next;
+    const ws=mondayOf(dateOf(next));
+    if(key(ws)!==key(weekStart)) moveWeek(ws); else renderAll();
+  }
   function setTab(t){
-    tab=t;
+    tab=t; dayView=null;
     const cur=mondayOf(new Date());
     if(t==="today"&&key(weekStart)!==key(cur)){moveWeek(cur);return}
     renderAll();
   }
+  $("#weekToggle").onclick=()=>{const o=document.body.classList.toggle("weekopen");$("#weekToggle").setAttribute("aria-expanded",String(o))};
   $("#tabToday").onclick=()=>setTab("today");
   $("#tabWeek").onclick=()=>setTab("week");
   $("#tabStaff").onclick=()=>setTab("staff");
