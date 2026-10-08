@@ -29,17 +29,19 @@ img{max-width:100%}
   --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#111417; --surface:#191e22; --ink:#e6e9eb; --muted:#9aa4ab; --line:#283037; --line-strong:#3a444c;
-  --accent:#86b6e2; --accent-soft:#1f2c38;
-  --office:#2c2920; --office-line:#4a4331; --remote:#222927; --remote-line:#3a4540;
-  --church:#4b3b85; --church-ink:#ffffff; --edu:#2f6fc0; --edu-ink:#ffffff;
-  --warn:#f0a548; --warn-soft:#3a2a14; --rest:#2f8a55; --rest-ink:#ffffff; --family:#000000; --family-ink:#eceeef; --open-cell:#232a2f; color-scheme:dark}}
+  --bg:#0e1214; --surface:#171c20; --ink:#e8ebed; --muted:#a3adb4; --line:#2a3238; --line-strong:#3d474f;
+  --accent:#8cbcea; --accent-soft:#1c2a36;
+  --office:#332d1f; --office-line:#5c5038; --remote:#1d2b28; --remote-line:#3c5650;
+  --church:#5a47a3; --church-ink:#ffffff; --edu:#3170c4; --edu-ink:#ffffff;
+  --warn:#f0a548; --warn-soft:#3a2a14; --rest:#2e8b57; --rest-ink:#ffffff; --family:#050608; --family-ink:#eceeef; --open-cell:#1d2328;
+  --church-text:#b3a4f0; --edu-text:#8fbcf2; --rest-text:#5cc58a; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#111417; --surface:#191e22; --ink:#e6e9eb; --muted:#9aa4ab; --line:#283037; --line-strong:#3a444c;
-  --accent:#86b6e2; --accent-soft:#1f2c38;
-  --office:#2c2920; --office-line:#4a4331; --remote:#222927; --remote-line:#3a4540;
-  --church:#4b3b85; --church-ink:#ffffff; --edu:#2f6fc0; --edu-ink:#ffffff;
-  --warn:#f0a548; --warn-soft:#3a2a14; --rest:#2f8a55; --rest-ink:#ffffff; --family:#000000; --family-ink:#eceeef; --open-cell:#232a2f; color-scheme:dark}
+  --bg:#0e1214; --surface:#171c20; --ink:#e8ebed; --muted:#a3adb4; --line:#2a3238; --line-strong:#3d474f;
+  --accent:#8cbcea; --accent-soft:#1c2a36;
+  --office:#332d1f; --office-line:#5c5038; --remote:#1d2b28; --remote-line:#3c5650;
+  --church:#5a47a3; --church-ink:#ffffff; --edu:#3170c4; --edu-ink:#ffffff;
+  --warn:#f0a548; --warn-soft:#3a2a14; --rest:#2e8b57; --rest-ink:#ffffff; --family:#050608; --family-ink:#eceeef; --open-cell:#1d2328;
+  --church-text:#b3a4f0; --edu-text:#8fbcf2; --rest-text:#5cc58a; color-scheme:dark}
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);padding:0 16px}
@@ -70,7 +72,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
 .count{display:flex;flex-direction:column}
 .count b{font:700 1.35rem/1 var(--display);font-variant-numeric:tabular-nums}
 .count span{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:4px}
-.count.rest b{color:var(--rest)} .count.edu b{color:var(--edu)} .count.church b{color:var(--church)}
+.count.rest b{color:var(--rest-text,var(--rest))} .count.edu b{color:var(--edu-text,var(--edu))} .count.church b{color:var(--church-text,var(--church))}
 .status{margin-left:auto;font:500 .75rem var(--mono);color:var(--muted)}
 
 .week{display:flex;flex-direction:column;gap:10px}
@@ -376,6 +378,11 @@ html,body{max-width:100%;overflow-x:hidden}
   input[type=text],input[type=email],input[type=number],input[type=time],input[type=url],select,textarea{font-size:16px!important}
 }
 .calbanner{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--accent-soft);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:.9rem;margin-bottom:10px}
+/* Night mode refinements */
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tabs button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+:root:not([data-theme="light"]) .map i.family{border-color:var(--line-strong)}
+:root:not([data-theme="light"]) .block[data-mode="family"]{border-color:var(--line-strong);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+}
 </style>
 <style>
 /* sign-in screen + account line */
