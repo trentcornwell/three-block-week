@@ -173,6 +173,8 @@
     if(staff){$("#team").hidden=true;$("#viewing").hidden=true;renderBC();renderStaff();return}
     weekEl.classList.toggle("today-view",tab==="today");
     weekEl.innerHTML=(tab==="today"?[dayView||todayKey()]:weekDates()).map(dayHTML).join("");
+    if(tab==="today"&&viewing===me&&calMsg==="connect"&&CFG.googleCalendar!==false)
+      weekEl.insertAdjacentHTML("afterbegin",`<div class="calbanner">Your Google Calendar isn't showing on this device. <button class="btn" data-calconnect>Connect Google Calendar</button></div>`);
     document.body.classList.toggle("tab-today",tab==="today");
     renderSummary(); renderTeam(); renderViewing(); renderPrio(); renderTools(); renderBC();
   }
@@ -634,6 +636,7 @@
 
   /* ---------- block interactions ---------- */
   weekEl.addEventListener("click",e=>{
+    if(e.target.closest("[data-calconnect]")){signInGoogle();return}
     const cb=e.target.closest("[data-carry]"); if(cb){ if(!ro()) carry(cb.dataset.carry); return }
     const ex=e.target.closest("[data-exercise]"); if(ex){ if(ro()) return; const date=ex.dataset.exercise, d=getDay(me,date);
       if(d.exercised) delete d.exercised; else d.exercised=true; saveDay(date); renderDay(date); return }
