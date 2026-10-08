@@ -395,7 +395,22 @@
   const GTOKEN="tbw-google-token";
   let calTimer=null;
   function getGToken(){try{const t=JSON.parse(localStorage.getItem(GTOKEN)||"null");if(t&&t.exp>Date.now()+60000)return t.token}catch(e){}return null}
-  function storeGToken(session){if(session&&session.provider_token){try{localStorage.setItem(GTOKEN,JSON.stringify({token:session.provider_token,exp:Date.now()+55*60000}))}catch(e){}}}
+  function storeGToken(session){
+    if(session&&session.provider_token){try{localStorage.setItem(GTOKEN,JSON.stringify({token:session.provider_token,exp:Date.now()+55*60000}))}catch(e){}}
+    // Right after a Google sign-in, keep a long-lived link on the server so the calendar stays connected.
+    if(session&&session.provider_refresh_token&&!storeGToken.sent){storeGToken.sent=true;
+      fetch("/api/google",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+session.access_token},body:JSON.stringify({action:"link",refresh:session.provider_refresh_token})}).catch(()=>{})}
+  }
+  // Ask the server for a fresh calendar token (works on any device once Google is linked).
+  async function fetchGToken(){
+    try{
+      const {data:{session}}=await sb.auth.getSession(); if(!session) return null;
+      const r=await fetch("/api/google",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+session.access_token},body:JSON.stringify({action:"token"})});
+      const j=await r.json(); if(!j.connected||!j.token) return null;
+      try{localStorage.setItem(GTOKEN,JSON.stringify({token:j.token,exp:Date.now()+Math.max(300,(j.expires_in||3600)-300)*1000}))}catch(e){}
+      return j.token;
+    }catch(e){return null}
+  }
   function parseCal(p){
     const out={}; const slot=d=>out[d]||(out[d]={allDay:[],m:[],a:[],e:[]});
     const seen=new Set(), echo=((profileMap[me]||{}).name||"").trim();
@@ -437,7 +452,8 @@
   async function loadCal(){
     clearTimeout(calTimer);
     if(CFG.googleCalendar===false){calMsg="";return}
-    const tok=getGToken();
+    let tok=getGToken();
+    if(!tok) tok=await fetchGToken();
     if(!tok){calBy={};calMsg="connect";requestFull();return}
     const ws=wsKey();
     const q=new URLSearchParams({timeMin:weekStart.toISOString(),timeMax:addDays(weekStart,7).toISOString(),singleEvents:"true",orderBy:"startTime",maxResults:"250"});
@@ -457,9 +473,10 @@
       else{
         const items=[]; for(const x of ok) items.push(...((await x.json()).items||[]));
         items.sort((a,b)=>String((a.start&&(a.start.dateTime||a.start.date))||"").localeCompare(String((b.start&&(b.start.dateTime||b.start.date))||"")));
-        calBy=parseCal({items});calMsg="";
+        calBy=parseCal({items});calMsg="";loadCal.retried=false;
       }
     }catch(e){
+      if(e.auth&&!loadCal.retried){loadCal.retried=true;try{localStorage.removeItem(GTOKEN)}catch(_){};return loadCal()}
       if(e.auth){try{localStorage.removeItem(GTOKEN)}catch(_){};calBy={};calList=null;calMsg="connect"}
       else calMsg="Google Calendar couldn't refresh just now. Showing the last events loaded.";
     }
@@ -470,7 +487,8 @@
   function signInGoogle(){
     return sb.auth.signInWithOAuth({provider:"google",options:{
       redirectTo:location.origin+location.pathname,
-      scopes:CFG.googleCalendar===false?undefined:"https://www.googleapis.com/auth/calendar.readonly"}});
+      scopes:CFG.googleCalendar===false?undefined:"https://www.googleapis.com/auth/calendar.readonly",
+      queryParams:CFG.googleCalendar===false?undefined:{access_type:"offline",prompt:"consent"}}});
   }
 
   /* ---------- sign-in ---------- */
