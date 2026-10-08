@@ -363,6 +363,9 @@ td.today-col{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 }
 .it.conv>input[type=checkbox]{border-radius:50%}
 .it.conv .txt::before{content:"💬 ";font-size:.85em}
+.exbtn{font:600 .72rem/1 var(--body);border:1px dashed var(--line-strong);background:transparent;color:var(--muted);border-radius:999px;padding:4px 9px;cursor:pointer;margin-top:6px;align-self:flex-start;white-space:nowrap}
+.exbtn.on{border-style:solid;border-color:var(--rest);background:var(--rest);color:var(--rest-ink)}
+.week.today-view .exbtn{margin-top:0}
 </style>
 <style>
 /* sign-in screen + account line */
@@ -481,6 +484,7 @@ td.today-col{background:color-mix(in srgb,var(--accent) 6%,transparent)}
       <div class="gfields">
         <label for="gRest">At least <input id="gRest" type="number" min="0" max="21" inputmode="numeric"> Rest blocks</label>
         <label for="gFam">At least <input id="gFam" type="number" min="0" max="21" inputmode="numeric"> Family blocks</label>
+        <label for="gEx">Exercise at least <input id="gEx" type="number" min="0" max="7" inputmode="numeric"> days a week</label>
         <label for="gEve">No more than <input id="gEve" type="number" min="0" max="7" inputmode="numeric"> working evenings (Work, Education, Church)</label>
       </div>
     </details>

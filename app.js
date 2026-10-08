@@ -11,7 +11,7 @@
   const DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const DOW3=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const DEF_GUARD={minRest:2,minFamily:3,maxWorkEvenings:3};
+  const DEF_GUARD={minRest:2,minFamily:3,maxWorkEvenings:3,minExercise:3};
   const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone}catch(e){return undefined}})();
   const $=s=>document.querySelector(s);
   const weekEl=$("#week");
@@ -151,6 +151,7 @@
     const carry=!ro()&&date<=tk&&hasUnfinished(d)?`<button class="carry" data-carry="${date}">${date<tk?"Move unfinished to today":"Move unfinished to tomorrow"}</button>`:"";
     return `<section class="day${isToday?" is-today":""}" data-day="${date}" aria-label="${DOW[dt.getDay()]}">
       <div class="dlabel"><span class="dn">${DOW[dt.getDay()]}</span><span class="dd">${MON[dt.getMonth()]} ${dt.getDate()}</span>${isToday?`<span class="today">Today</span>`:""}
+        ${viewing===me?`<button class="exbtn${d.exercised?" on":""}" data-exercise="${date}" aria-pressed="${!!d.exercised}" title="Tap when you've exercised today">${d.exercised?"✓ Exercised":"Exercised?"}</button>`:""}
         ${tab==="today"?`<span class="daynav"><button class="btn" data-dayjump="-1" aria-label="Previous day">&lsaquo;</button>${isToday?"":`<button class="btn" data-dayjump="0">Today</button>`}<button class="btn" data-dayjump="1" aria-label="Next day">&rsaquo;</button></span>`:""}
         ${all.length?`<div class="allday">${all.map(t=>`<span>${esc(t)}</span>`).join("")}</div>`:""}${carry}</div>
       ${BLOCKS.map(([b,l])=>blockHTML(date,b,l,d.blocks[b],ro())).join("")}
@@ -210,6 +211,8 @@
     if(g.minFamily>0) pills.push(pill(s.family>=g.minFamily,`Family ${fmt(s.family)} of ${g.minFamily}`));
     const eveOk=s.eveWork<=g.maxWorkEvenings;
     pills.push(`<span class="pill ${eveOk?"ok":"warn"}">Working evenings ${s.eveWork} of ${g.maxWorkEvenings} max${eveOk?"":" — over limit"}</span>`);
+    if(viewing===me){const nEx=weekDates().filter(dt=>getDay(me,dt).exercised).length;
+      pills.push(g.minExercise>0?pill(nEx>=g.minExercise,`Exercised ${nEx} of ${g.minExercise}`):`<span class="pill ok">Exercised ${nEx} of 7</span>`)}
     $("#guards").innerHTML=pills.join("");
     const cs=$("#calStatus");
     if(viewing===me&&calMsg){
@@ -267,7 +270,7 @@
   function renderTools(){
     const m=getMeta(me); $("#fillStd").disabled=!m.template;
     const g=guards(me);
-    for(const [id,k] of [["gRest","minRest"],["gFam","minFamily"],["gEve","maxWorkEvenings"]]){const el=$("#"+id); if(document.activeElement!==el) el.value=g[k]}
+    for(const [id,k] of [["gRest","minRest"],["gFam","minFamily"],["gEve","maxWorkEvenings"],["gEx","minExercise"]]){const el=$("#"+id); if(el&&document.activeElement!==el) el.value=g[k]}
   }
   let staffSeq=0;
   async function renderStaff(){
@@ -632,6 +635,8 @@
   /* ---------- block interactions ---------- */
   weekEl.addEventListener("click",e=>{
     const cb=e.target.closest("[data-carry]"); if(cb){ if(!ro()) carry(cb.dataset.carry); return }
+    const ex=e.target.closest("[data-exercise]"); if(ex){ if(ro()) return; const date=ex.dataset.exercise, d=getDay(me,date);
+      if(d.exercised) delete d.exercised; else d.exercised=true; saveDay(date); renderDay(date); return }
     const dj=e.target.closest("[data-dayjump]"); if(dj){jumpDay(Number(dj.dataset.dayjump));return}
     const ch=e.target.closest('[data-act="chips"]'); if(ch&&!ro()){(ch.closest(".half")||ch.closest(".block")).classList.toggle("chips-open");return}
     if(ro()) return;
@@ -971,7 +976,7 @@
     getMeta(me).template={days}; saveMeta("template"); renderTools();
     $("#toolMsg").textContent="Saved. Use “Fill from my standard week” on any new week to start from this pattern.";
   };
-  for(const [id,k] of [["gRest","minRest"],["gFam","minFamily"],["gEve","maxWorkEvenings"]]){
+  for(const [id,k] of [["gRest","minRest"],["gFam","minFamily"],["gEve","maxWorkEvenings"],["gEx","minExercise"]]){
     $("#"+id).addEventListener("change",e=>{
       const v=Math.max(0,Math.min(21,parseInt(e.target.value,10)||0));
       const m=getMeta(me); m.settings=Object.assign({},DEF_GUARD,m.settings||{},{[k]:v}); saveMeta("settings"); renderSummary();
