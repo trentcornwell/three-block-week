@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="3-Block Week">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='4' width='26' height='7' rx='2' fill='%23e2d5b6'/%3E%3Crect x='3' y='13' width='26' height='7' rx='2' fill='%23121416'/%3E%3Crect x='3' y='22' width='26' height='7' rx='2' fill='%232d7d4e'/%3E%3C/svg%3E">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Three-Block Week</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
@@ -383,6 +385,83 @@ html,body{max-width:100%;overflow-x:hidden}
 :root:not([data-theme="light"]) .map i.family{border-color:var(--line-strong)}
 :root:not([data-theme="light"]) .block[data-mode="family"]{border-color:var(--line-strong);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
 }
+
+/* ---------- Look & feel refresh ---------- */
+.top{position:relative}
+.ttl .acct{display:none!important}
+.menuwrap{position:absolute;top:14px;right:0;z-index:60}
+.menubtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:1.2rem;line-height:1;cursor:pointer}
+.menu{position:absolute;right:0;top:42px;min-width:220px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:8px;display:flex;flex-direction:column;gap:2px}
+.menu[hidden]{display:none}
+.menu p{margin:4px 8px 8px;font-size:.8rem;color:var(--muted);overflow-wrap:anywhere}
+.menu p b{color:var(--ink);font-weight:600}
+.menu a,.menu button{display:block;text-align:left;font:500 .9rem var(--body);color:var(--ink);background:none;border:0;border-radius:8px;padding:9px 10px;text-decoration:none;cursor:pointer}
+.menu a:hover,.menu button:hover{background:var(--bg)}
+.ttl{padding-right:44px}
+body.tab-today .ttl{display:none}
+body.tab-today .top{min-height:44px}
+
+/* Block headers: one calm line */
+.bhead{justify-content:flex-start;align-items:center;gap:6px}
+.bname{font:600 .8rem/1.2 var(--body);text-transform:none;letter-spacing:0;color:var(--b-muted)}
+.bsep{color:var(--b-muted);font-size:.8rem}
+.btype{text-align:left;font:700 .92rem/1.2 var(--display)}
+.block[data-mode="rest"] .bsep,.block[data-mode="family"] .bsep{display:none}
+.hname{font:600 .74rem/1.2 var(--body);text-transform:none;letter-spacing:0}
+.shr.icon{margin-left:auto;margin-right:0;border:0;padding:4px;border-radius:7px;color:var(--b-muted);background:transparent;display:inline-flex;position:relative;cursor:pointer}
+.shr.icon input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.shr.icon .ic{width:17px;height:17px}
+.shr.icon:hover{color:var(--b-ink);background:color-mix(in srgb,var(--b-ink) 8%,transparent)}
+.shr.icon.on{color:#fff;background:var(--rest)}
+.shr.icon:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.is-split>.bhead .shr.icon{margin-left:auto}
+.is-split>.bhead .split-btn{margin-left:0}
+
+/* Items: one icon per kind, softer type */
+.ic{width:15px;height:15px;display:block}
+.kic{flex:none;color:var(--b-muted);margin-top:2px;display:inline-flex}
+.kic.obj{color:var(--accent)}
+:is([data-mode="church"],[data-mode="education"],[data-mode="family"]) .kic.obj{color:var(--b-ink)}
+.it.event .kic{color:var(--b-ink)}
+.it.conv .txt::before{content:none}
+.it{font-size:.93rem;gap:8px}
+.week.today-view .it{font-size:1.02rem}
+.items+.items{margin-top:4px}
+.sec{display:none}
+
+/* Add row: one quiet line that opens */
+.add{display:block;border-top:1px dashed var(--b-line);padding-top:6px;margin-top:auto}
+.addbtn{border:0;background:none;color:var(--b-muted);font:500 .86rem var(--body);padding:4px 0;cursor:pointer;width:100%;text-align:left}
+.addbtn:hover{color:var(--b-ink)}
+.addbox{display:none;flex-direction:column;gap:6px}
+.add.open .addbtn{display:none}
+.add.open .addbox{display:flex}
+.kinds{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.kc{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--b-line);background:transparent;color:var(--b-muted);border-radius:999px;padding:3px 9px 3px 7px;font:600 .74rem var(--body);cursor:pointer}
+.kc .ic{width:13px;height:13px}
+.kc.on{color:var(--b-ink);border-color:var(--b-ink);background:color-mix(in srgb,var(--b-ink) 10%,transparent)}
+.kinds .brkbtn{margin-left:auto}
+.add input{width:100%;border:1px solid var(--b-line);border-radius:8px;background:color-mix(in srgb,var(--b-ink) 4%,transparent);padding:7px 9px;font:inherit;font-size:.92rem;color:var(--b-ink)}
+.add input:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+
+/* Day progress */
+.dprog{display:flex;flex-direction:column;gap:4px;margin-top:6px;min-width:90px}
+.dprog[hidden]{display:none}
+.dprog .pt{font:600 .72rem var(--body);color:var(--muted)}
+.dprog .pbar{display:block;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.dprog .pbar i{display:block;height:100%;background:var(--rest);border-radius:3px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.dprog.all .pt{color:var(--rest-text,var(--rest))}
+.week.today-view .dprog{flex-basis:100%;flex-direction:row;align-items:center;gap:10px;margin-top:2px}
+.week.today-view .dprog .pbar{flex:1;max-width:260px}
+.dlabel .dd{font-family:var(--body);font-weight:500}
+
+/* Check-off */
+.it .txt{transition:color .3s ease,text-decoration-color .3s ease;text-decoration:line-through;text-decoration-color:transparent}
+.it.done .txt{text-decoration-color:currentColor}
+@keyframes popcheck{0%{transform:scale(1)}35%{transform:scale(1.28)}70%{transform:scale(.94)}100%{transform:scale(1)}}
+.it.pop>input[type=checkbox]{animation:popcheck .35s ease-out}
+@media (prefers-reduced-motion:reduce){.it.pop>input[type=checkbox]{animation:none}.dprog .pbar i{transition:none}}
+@media (max-width:700px){.menuwrap{top:10px}body.tab-today .weektoggle{width:calc(100% - 46px)}.ttl{padding-right:44px}}
 </style>
 <style>
 /* sign-in screen + account line */
@@ -434,6 +513,14 @@ html,body{max-width:100%;overflow-x:hidden}
 
 <div class="wrap" id="app" hidden>
   <header class="top">
+    <div class="menuwrap">
+      <button class="menubtn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="menu">⋯</button>
+      <div class="menu" id="menu" hidden>
+        <p>Signed in as<br><b id="acct2"></b></p>
+        <a href="/setup">Setup guide for other pastors</a>
+        <button type="button" id="signOut2">Sign out</button>
+      </div>
+    </div>
     <div class="ttl">
       <h1>Three-Block Week</h1>
       <p>Morning, afternoon and evening, every day. Give each block a type and plan the work blocks with objectives and tasks. Each staff member plans their own week, and everyone can see the team's.</p>
@@ -514,7 +601,7 @@ html,body{max-width:100%;overflow-x:hidden}
     <span><i style="background:var(--church)"></i>Church Gathering</span>
     <span><i style="background:var(--family);box-shadow:0 0 0 1px var(--line-strong)"></i>Family</span>
     <span><i style="background:var(--rest)"></i>Rest</span>
-    <span class="lhelp">Tap an item to edit or move it. On a computer you can also drag it, or a Basecamp to-do, into a block. Use “+1 hr break” for an errand or time away. Events can have a time: type it first, like “2pm Staff meeting”, or add it when editing. Check <b>Basecamp</b> on a block to put it on the Basecamp Schedule with everything in it as notes, or <b>BC</b> beside a single item.</span>
+    <span class="lhelp">Tap an item to edit or move it. On a computer you can also drag it, or a Basecamp to-do, into a block. Use “+1 hr break” for an errand or time away. Events can have a time: type it first, like “2pm Staff meeting”, or add it when editing. Tap the calendar icon on a block to put it on the Basecamp Schedule with everything in it as notes, or <b>BC</b> beside a single item.</span>
   </div>
 
   <main class="week" id="week"></main>

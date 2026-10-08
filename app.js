@@ -71,13 +71,24 @@
   /* ---------- rendering: blocks ---------- */
   function pris(){return getWeek(viewing,wsKey()).priorities}
   function shareBox(on,readOnly,blk){
-    if(readOnly) return on?`<span class="shr on ro" title="On the Basecamp Schedule">BC</span>`:"";
-    return `<label class="shr${on?" on":""}${blk?" blk":""}" title="Put this on the Basecamp Schedule"><input type="checkbox" data-act="${blk?"share-blk":"share"}"${on?" checked":""} aria-label="Put on the Basecamp Schedule">${blk?"Basecamp":"BC"}</label>`;
+    if(readOnly) return on?`<span class="shr on ro${blk?" blk icon":""}" title="On the Basecamp Schedule">${blk?IC.share:"BC"}</span>`:"";
+    if(blk) return `<label class="shr blk icon${on?" on":""}" title="${on?"On the Basecamp Schedule. Tap to take it off.":"Put this block on the Basecamp Schedule"}"><input type="checkbox" data-act="share-blk"${on?" checked":""} aria-label="Put this block on the Basecamp Schedule">${IC.share}</label>`;
+    return `<label class="shr${on?" on":""}" title="Put this on the Basecamp Schedule"><input type="checkbox" data-act="share"${on?" checked":""} aria-label="Put on the Basecamp Schedule">BC</label>`;
   }
   function taskLI(i,readOnly,parent){
-    return `<li class="it task${i.kind==="conv"?" conv":""}${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done"><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">To-do</a>`:""}${i.kind==="conv"?"":shareBox(i.share,readOnly)}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
+    return `<li class="it task${i.kind==="conv"?" conv":""}${i.done?" done":""}" data-id="${i.id}"${parent?` data-parent="${parent}"`:""}${readOnly?"":` draggable="true"`}><input type="checkbox" data-act="check" id="c-${i.id}" ${i.done?"checked":""} ${readOnly?"disabled":""} aria-label="Done">${i.kind==="conv"?`<span class="kic">${IC.conv}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(i.text)}</span>${i.bc&&i.bc.url?`<a class="bclink" href="${esc(i.bc.url)}" target="_blank" rel="noopener" title="Open in Basecamp${i.bc.project?" · "+esc(i.bc.project):""}">To-do</a>`:""}${i.kind==="conv"?"":shareBox(i.share,readOnly)}${readOnly?"":`<button class="del" data-act="del" aria-label="Remove">&times;</button>`}</li>`;
   }
   const KINDS=[["obj","Objective"],["task","Task"],["conv","Conversation"],["event","Event"]];
+  const SV=(d,extra="")=>`<svg class="ic" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
+  const IC={
+    obj:SV('<circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.2" fill="currentColor" stroke="none"/>'),
+    task:SV('<rect x="2.5" y="2.5" width="11" height="11" rx="2.5"/><path d="M5.3 8.2l1.9 1.9 3.6-4"/>'),
+    conv:SV('<path d="M3 3.5h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7l-3 2.5v-2.5H3a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z"/>'),
+    event:SV('<rect x="2.5" y="3.5" width="11" height="10" rx="2"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"/>'),
+    share:SV('<rect x="2.5" y="3.5" width="11" height="10" rx="2"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"/><path d="M8 12V8.5M6.4 10l1.6-1.6L9.6 10"/>')
+  };
+  const KSHORT={obj:"Objective",task:"Task",conv:"Talk",event:"Event"};
+  const addOpen={};
   const KIND_PH={obj:"Add an objective",task:"Add a task",conv:"Add a conversation",event:"Add an event"};
   function listHTML(o,ids,readOnly){
     const P=pris();
@@ -90,22 +101,24 @@
     };
     const chip=ob=>{const n=P.findIndex(p=>p.id===ob.pri);return n>=0?`<span class="pchip" title="${esc(P[n].text)}">P${n+1}</span>`:""};
     const objHTML=ob=>`<li class="grp" data-id="${ob.id}">
-        <div class="it obj" data-id="${ob.id}"${readOnly?"":` draggable="true"`}><span class="mk" aria-hidden="true"></span><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ob.text)}</span>${chip(ob)}${shareBox(ob.share,readOnly)}${del}</div>
+        <div class="it obj" data-id="${ob.id}"${readOnly?"":` draggable="true"`}><span class="kic obj">${IC.obj}</span><span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ob.text)}</span>${chip(ob)}${shareBox(ob.share,readOnly)}${del}</div>
         ${ob.tasks.length?`<ul class="items sub">${ob.tasks.map(t=>taskLI(t,readOnly,ob.id)).join("")}</ul>`:""}
         ${readOnly?"":`<div class="subadd"><input id="sub-${ids}-${ob.id}" data-parent="${ob.id}" type="text" placeholder="+ Task under this objective" autocomplete="off" enterkeyhint="done"></div>`}
       </li>`;
-    const evHTML=ev=>`<li class="it event" data-id="${ev.id}"${readOnly?"":` draggable="true"`}><span class="ev-ic" aria-hidden="true"></span>${ev.time?`<span class="tm">${fmtTime(ev.time)}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ev.text)}</span>${shareBox(ev.share,readOnly)}${del}</li>`;
+    const evHTML=ev=>`<li class="it event" data-id="${ev.id}"${readOnly?"":` draggable="true"`}><span class="kic">${IC.event}</span>${ev.time?`<span class="tm">${fmtTime(ev.time)}</span>`:""}<span class="txt"${readOnly?"":` data-act="edit" tabindex="0"`}>${esc(ev.text)}</span>${shareBox(ev.share,readOnly)}${del}</li>`;
     const inId=`in-${ids}`, k=kindPref[inId]||"task";
     return `${breaks.length?`<ul class="items">${breaks.map(brkHTML).join("")}</ul>`:""}
-      ${events.length?`<div class="sec">Events</div><ul class="items">${byTime(events).map(evHTML).join("")}</ul>`:""}
-      ${objs.length?`<div class="sec">Objectives</div><ul class="items">${objs.map(objHTML).join("")}</ul>`:""}
-      ${convs.length?`<div class="sec">Conversations</div><ul class="items">${convs.map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
-      ${tasks.length?`${objs.length||events.length||convs.length?`<div class="sec">Tasks</div>`:""}<ul class="items">${tasks.map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
-      ${!o.items.length?`<div class="empty">Nothing planned yet.</div>`:""}
-      ${readOnly?"":`<div class="add">
-        <select class="kind" data-act="kind" data-kind="${k}" aria-label="What to add">${KINDS.map(([v,l])=>`<option value="${v}"${v===k?" selected":""}>${l}</option>`).join("")}</select>
-        <input id="${inId}" type="text" placeholder="${KIND_PH[k]}" autocomplete="off" enterkeyhint="done">
-        <button class="brkbtn" data-act="break" title="Add a one-hour break, for an errand or time away">+1 hr break</button>
+      ${events.length?`<ul class="items">${byTime(events).map(evHTML).join("")}</ul>`:""}
+      ${objs.length?`<ul class="items">${objs.map(objHTML).join("")}</ul>`:""}
+      ${convs.length?`<ul class="items">${convs.map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
+      ${tasks.length?`<ul class="items">${tasks.map(t=>taskLI(t,readOnly,null)).join("")}</ul>`:""}
+      ${!o.items.length&&readOnly?`<div class="empty">Nothing planned yet.</div>`:""}
+      ${readOnly?"":`<div class="add${addOpen[inId]?" open":""}" data-in="${inId}">
+        <button class="addbtn" type="button" data-act="addopen">+ Add…</button>
+        <div class="addbox">
+          <div class="kinds" role="group" aria-label="What to add">${KINDS.map(([v,l])=>`<button type="button" class="kc${v===k?" on":""}" data-act="kind" data-k="${v}" aria-pressed="${v===k}" title="${l}">${IC[v]}<span>${KSHORT[v]}</span></button>`).join("")}<button class="brkbtn" data-act="break" type="button" title="Add a one-hour break, for an errand or time away">+1 hr break</button></div>
+          <input id="${inId}" type="text" placeholder="${KIND_PH[k]}" autocomplete="off" enterkeyhint="done">
+        </div>
       </div>`}`;
   }
   function chipsHTML(mode,allowed,readOnly,label){
@@ -136,7 +149,7 @@
     const kept=readOnly?"":(n?`${n} item${n>1?"s":""} kept for later`:"Protected time");
     const canSplit=!readOnly&&(!mode||SPLITTABLE.includes(mode));
     return `<div class="block${blk.share&&mode?" shared":""}" data-date="${date}" data-b="${b}" ${mode?`data-mode="${mode}"`:""}>
-      <div class="bhead"><span class="bname">${label}</span>${mode?shareBox(blk.share,readOnly,true):""}${mode?`<span class="btype"${readOnly?"":` data-act="chips" role="button" tabindex="0"`}>${TYPE_NAME[mode]||""}</span>`:""}</div>
+      <div class="bhead"><span class="bname">${label}</span>${mode?`<span class="bsep" aria-hidden="true">·</span><span class="btype"${readOnly?"":` data-act="chips" role="button" tabindex="0"`}>${TYPE_NAME[mode]||""}</span>`:""}${mode?shareBox(blk.share,readOnly,true):""}</div>
       ${chipsHTML(mode,TYPES.map(t=>t[0]),readOnly,label)}
       ${calHTML(date,b)}
       <div class="bfill"><strong>${TYPE_NAME[mode]||""}</strong>${kept?`<small>${kept}</small>`:""}</div>
@@ -145,6 +158,17 @@
       </div>
     </div>`;
   }
+  function dayProgress(d){let total=0,done=0;
+    for(const {c} of containers(d)) for(const it of c.items){
+      if(it.kind==="obj"){for(const t of it.tasks||[]){total++;if(t.done)done++}}
+      else if(it.kind!=="event"&&it.kind!=="break"){total++;if(it.done)done++}}
+    return {total,done};
+  }
+  function progHTML(date,d){const {total,done}=dayProgress(d); if(!total) return `<div class="dprog" data-prog="${date}" hidden></div>`;
+    return `<div class="dprog${done===total?" all":""}" data-prog="${date}"><span class="pt">${done===total?"All done":`${done} of ${total} done`}</span><span class="pbar"><i style="width:${Math.round(done/total*100)}%"></i></span></div>`}
+  function updateProg(date){const el=weekEl.querySelector(`[data-prog="${date}"]`); if(!el) return; const tmp=document.createElement("div"); tmp.innerHTML=progHTML(date,getDay(viewing,date)); const n=tmp.firstElementChild;
+    el.hidden=n.hidden; el.className=n.className; if(n.hidden) return;
+    const bar=el.querySelector(".pbar i"); if(bar){el.querySelector(".pt").textContent=n.querySelector(".pt").textContent; requestAnimationFrame(()=>bar.style.width=n.querySelector(".pbar i").style.width)} else el.innerHTML=n.innerHTML}
   function dayHTML(date){
     const d=getDay(viewing,date), dt=dateOf(date), tk=todayKey(), isToday=date===tk;
     const all=(viewing===me&&calBy[date]&&calBy[date].allDay)||[];
@@ -153,6 +177,7 @@
       <div class="dlabel"><span class="dn">${DOW[dt.getDay()]}</span><span class="dd">${MON[dt.getMonth()]} ${dt.getDate()}</span>${isToday?`<span class="today">Today</span>`:""}
         ${viewing===me?`<button class="exbtn${d.exercised?" on":""}" data-exercise="${date}" aria-pressed="${!!d.exercised}" title="Tap when you've exercised today">${d.exercised?"✓ Exercised":"Exercised?"}</button>`:""}
         ${tab==="today"?`<span class="daynav"><button class="btn" data-dayjump="-1" aria-label="Previous day">&lsaquo;</button>${isToday?"":`<button class="btn" data-dayjump="0">Today</button>`}<button class="btn" data-dayjump="1" aria-label="Next day">&rsaquo;</button></span>`:""}
+        ${progHTML(date,d)}
         ${all.length?`<div class="allday">${all.map(t=>`<span>${esc(t)}</span>`).join("")}</div>`:""}${carry}</div>
       ${BLOCKS.map(([b,l])=>blockHTML(date,b,l,d.blocks[b],ro())).join("")}
     </section>`;
@@ -522,7 +547,7 @@
     const solo=people.length<2;
     backend={label:solo?"Saved":"Saved · visible to staff"};
     $("#tabStaff").hidden=solo;
-    $("#acct").textContent=u.email;
+    $("#acct").textContent=u.email; $("#acct2").textContent=u.email;
     showGate(null);
     startRealtime();
     await bcSaveFromHash();
@@ -684,6 +709,10 @@
       const txt=weekEl.querySelector(`.it.brk[data-id="${bk.id}"] .txt`); if(txt) openEdit(txt);
       setStatus(bk.until?"Break added — you're back at "+new Date(bk.until).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"One-hour break added");
     }
+    else if(act==="addopen"){const box=t.closest(".add");addOpen[box.dataset.in]=true;box.classList.add("open");const inp=document.getElementById(box.dataset.in);if(inp)inp.focus()}
+    else if(act==="kind"){const box=t.closest(".add");const inId=box.dataset.in;const k=kindPref[inId]=t.dataset.k;
+      box.querySelectorAll(".kc").forEach(b=>{const on=b.dataset.k===k;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
+      const inp=document.getElementById(inId);if(inp){inp.placeholder=KIND_PH[k];inp.focus()}}
     else if(act==="del"){
       const li=t.closest("[data-id]"); const id=li.dataset.id, parent=li.dataset.parent;
       const f=findItem(x.target,id,parent); if(!f) return;
@@ -693,14 +722,13 @@
   });
   weekEl.addEventListener("change",e=>{
     const t=e.target; if(ro()) return;
-    if(t.dataset.act==="kind"){const x=ctx(t);if(!x)return;const inId=`in-${x.ids}`;const k=kindPref[inId]=t.value;
-      t.dataset.kind=k;const inp=document.getElementById(inId);if(inp){inp.placeholder=KIND_PH[k];inp.focus()}return}
+
     if(t.dataset.act==="share-blk"){const x=ctx(t);if(!x)return;if(t.checked)x.blk.share=true;else delete x.blk.share;t.closest(".shr").classList.toggle("on",t.checked);t.closest(".block").classList.toggle("shared",t.checked);saveDay(x.date);setStatus(t.checked?"This block and everything in it will show on the Basecamp Schedule":"Taken off the Basecamp Schedule");return}
     if(t.dataset.act==="share"){const x=ctx(t);if(!x)return;const li=t.closest("[data-id]");const f=findItem(x.target,li.dataset.id,li.dataset.parent);if(!f||!f.item)return;
       if(t.checked)f.item.share=true;else delete f.item.share;t.closest(".shr").classList.toggle("on",t.checked);saveDay(x.date);setStatus(t.checked?"Will show on the Basecamp Schedule":"Taken off the Basecamp Schedule");return}
     if(t.dataset.act!=="check") return; const x=ctx(t);
     const li=t.closest(".it"); const f=findItem(x.target,li.dataset.id,li.dataset.parent); if(!f||!f.item) return;
-    f.item.done=t.checked; li.classList.toggle("done",t.checked); saveDay(x.date);
+    f.item.done=t.checked; li.classList.toggle("done",t.checked); if(t.checked){li.classList.remove("pop");void li.offsetWidth;li.classList.add("pop")} saveDay(x.date); updateProg(x.date);
     if(f.item.bc&&f.item.bc.id!=null&&f.item.bc.type!=="card"){markPlannedDone(f.item.bc.id,t.checked);bcSetDone(f.item.bc.id,t.checked)}
     const day=weekEl.querySelector(`[data-day="${x.date}"] .dlabel`);
     if(day){const had=!!day.querySelector(".carry"), has=x.date<=todayKey()&&hasUnfinished(getDay(me,x.date)); if(had!==has) renderDay(x.date)}
@@ -713,6 +741,7 @@
       return;
     }
     if(t.matches&&t.matches('.txt[data-act="edit"]')&&(e.key==="Enter"||e.key===" ")){e.preventDefault();openEdit(t);return}
+    if(e.key==="Escape"&&t.closest&&t.closest(".add")){const box=t.closest(".add");t.value="";t.blur();box.classList.remove("open");delete addOpen[box.dataset.in];return}
     if(t.tagName!=="INPUT"||t.type!=="text"||e.key!=="Enter") return;
     const text=t.value.trim(); if(!text) return; e.preventDefault();
     const x=ctx(t);
@@ -730,6 +759,8 @@
   });
   weekEl.addEventListener("focusout",()=>{
     setTimeout(()=>{
+      weekEl.querySelectorAll(".add.open").forEach(box=>{const inp=document.getElementById(box.dataset.in);
+        if(!box.contains(document.activeElement)&&(!inp||!inp.value.trim())){box.classList.remove("open");delete addOpen[box.dataset.in]}});
       if(typing()) return;
       if(pendingFull){renderAll();return}
       Object.keys(pendingRender).forEach(d=>{delete pendingRender[d];renderDay(d)});
@@ -1022,6 +1053,13 @@
     if(t==="today"&&key(weekStart)!==key(cur)){moveWeek(cur);return}
     renderAll();
   }
+  $("#menuBtn").onclick=e=>{e.stopPropagation();const m=$("#menu");m.hidden=!m.hidden;$("#menuBtn").setAttribute("aria-expanded",String(!m.hidden))};
+  document.addEventListener("click",e=>{const m=$("#menu");if(!m.hidden&&!e.target.closest(".menuwrap")){m.hidden=true;$("#menuBtn").setAttribute("aria-expanded","false")}});
+  $("#signOut2").onclick=()=>$("#signOut").click();
+  // The phone's top bar takes on the color of the time of day.
+  function tint(){const h=new Date().getHours(),m=document.querySelector('meta[name="theme-color"][media*="light"]');
+    if(m) m.content=h<12?"#f3ead6":h<16?"#e4ebe5":"#e1dcef"}
+  tint(); setInterval(tint,600000);
   $("#weekToggle").onclick=()=>{const o=document.body.classList.toggle("weekopen");$("#weekToggle").setAttribute("aria-expanded",String(o))};
   $("#tabToday").onclick=()=>setTab("today");
   $("#tabWeek").onclick=()=>setTab("week");
