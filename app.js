@@ -152,7 +152,7 @@
       <div class="bhead"><span class="bname">${label}</span>${mode?`<span class="bsep" aria-hidden="true">·</span><span class="btype"${readOnly?"":` data-act="chips" role="button" tabindex="0"`}>${TYPE_NAME[mode]||""}</span>`:""}${mode?shareBox(blk.share,readOnly,true):""}</div>
       ${chipsHTML(mode,TYPES.map(t=>t[0]),readOnly,label)}
       ${calHTML(date,b)}
-      <div class="bfill"><strong>${TYPE_NAME[mode]||""}</strong>${kept?`<small>${kept}</small>`:""}</div>
+      <div class="bfill"><strong>${TYPE_NAME[mode]||""}</strong>${kept?`<small>${kept}</small>`:""}${readOnly?"":`<button type="button" class="chgbtn" data-act="chips">Change</button>`}</div>
       <div class="bbody">${listHTML(blk,base,readOnly)}
         ${canSplit?`<div><button class="split-btn" data-act="split">Split into two halves</button></div>`:""}
       </div>

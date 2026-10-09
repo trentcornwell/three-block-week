@@ -462,6 +462,9 @@ body.tab-today .top{min-height:44px}
 .it.pop>input[type=checkbox]{animation:popcheck .35s ease-out}
 @media (prefers-reduced-motion:reduce){.it.pop>input[type=checkbox]{animation:none}.dprog .pbar i{transition:none}}
 @media (max-width:700px){.menuwrap{top:10px}body.tab-today .weektoggle{width:calc(100% - 46px)}.ttl{padding-right:44px}}
+/* Rest and Family blocks: a Change button to bring the type choices back (needed on phones) */
+.chgbtn{display:none;align-self:flex-start;margin-top:8px;border:1px solid var(--b-line);background:transparent;color:var(--b-ink);border-radius:999px;padding:5px 12px;font:600 .8rem var(--body);cursor:pointer}
+@media (max-width:700px){.block[data-mode]:not(.chips-open) .chgbtn{display:inline-block}}
 </style>
 <style>
 /* sign-in screen + account line */
