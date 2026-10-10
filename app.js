@@ -2,13 +2,13 @@
 (function(){
   const BLOCKS=[["m","Morning"],["a","Afternoon"],["e","Evening"]];
   const HOURS={m:"8 AM – 12 PM",a:"12 – 4 PM",e:"4 – 8 PM"};
-  const TYPES=[["office","Work · Office","Work · Office","Office"],["remote","Work · Remote","Work · Remote","Remote"],["education","On-Going Education","Education","Edu"],["church","Church Gathering","Church","Church"],["family","Family","Family","Family"],["rest","Rest","Rest","Rest"]];
+  const TYPES=[["office","Work · Office","Work · Office","Office"],["remote","Work · Remote","Work · Remote","Remote"],["education","On-Going Education","Education","Edu"],["church","Church Gathering","Church","Church"],["family","Family","Family","Family"],["travel","Travel","Travel","Travel"],["rest","Rest","Rest","Rest"]];
   const TYPE_NAME=Object.fromEntries(TYPES.map(t=>[t[0],t[1]]));
   const TYPE_TINY=Object.fromEntries(TYPES.map(t=>[t[0],t[3]]));
-  const SPLITTABLE=["office","remote","education","church","family","rest"];
+  const SPLITTABLE=["office","remote","education","church","family","travel","rest"];
   const WORKLIKE=["office","remote","education","church"];
-  const COLOR={office:"var(--office)",remote:"var(--remote)",education:"var(--edu)",church:"var(--church)",family:"var(--family)",rest:"var(--rest)"};
-  const DARK=["education","church","family","rest"];
+  const COLOR={office:"var(--office)",remote:"var(--remote)",education:"var(--edu)",church:"var(--church)",family:"var(--family)",travel:"var(--travel)",rest:"var(--rest)"};
+  const DARK=["education","church","family","travel","rest"];
   const DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const DOW3=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -137,7 +137,7 @@
       const halves=blk.halves.map((hf,h)=>`<div class="half" data-h="${h}" data-mode="${hf.mode}">
           <div class="hhead"><span class="hname">${h?"Second half":"First half"}</span><span class="btype"${readOnly?"":` data-act="chips" role="button" tabindex="0"`}>${TYPE_NAME[hf.mode]}</span></div>
           ${readOnly?"":chipsHTML(hf.mode,SPLITTABLE,readOnly,`${label} ${h?"second":"first"} half`)}
-          <div class="hfill">Protected time</div>
+          <div class="hfill">${hf.mode==="travel"?"Traveling":"Protected time"}</div>
           <div class="bbody">${listHTML(hf,`${base}-${h}`,readOnly)}</div>
         </div>`).join("");
       return `<div class="block is-split${blk.share?" shared":""}" data-date="${date}" data-b="${b}">
@@ -148,7 +148,7 @@
     }
     const mode=blk.mode||"";
     const n=countItems(blk);
-    const kept=readOnly?"":(n?`${n} item${n>1?"s":""} kept for later`:"Protected time");
+    const kept=readOnly?"":(n?`${n} item${n>1?"s":""} kept for later`:mode==="travel"?"Traveling":"Protected time");
     const canSplit=!readOnly&&(!mode||SPLITTABLE.includes(mode));
     return `<div class="block${blk.share&&mode?" shared":""}" data-date="${date}" data-b="${b}" ${mode?`data-mode="${mode}"`:""}>
       <div class="bhead"><span class="bname">${label}</span>${mode?`<span class="bsep" aria-hidden="true">·</span><span class="btype"${readOnly?"":` data-act="chips" role="button" tabindex="0"`}>${TYPE_NAME[mode]||""}</span>`:""}${mode?shareBox(blk.share,readOnly,true):""}</div>
@@ -217,7 +217,7 @@
   }
   function fmt(n){return Number.isInteger(n)?String(n):n.toFixed(1)}
   function stats(pid){
-    const c={office:0,remote:0,education:0,church:0,family:0,rest:0,open:0,eveWork:0}; const cells=[];
+    const c={office:0,remote:0,education:0,church:0,family:0,travel:0,rest:0,open:0,eveWork:0}; const cells=[];
     for(const date of weekDates()){const d=getDay(pid,date);
       for(const [b] of BLOCKS){const blk=d.blocks[b];
         if(blk.split){const [h0,h1]=blk.halves;c[h0.mode]+=.5;c[h1.mode]+=.5;if(b==="e"&&(WORKLIKE.includes(h0.mode)||WORKLIKE.includes(h1.mode)))c.eveWork++;
@@ -232,7 +232,7 @@
     const s=stats(viewing);
     $("#map").innerHTML=s.cells;
     $("#cOffice").textContent=fmt(s.office);$("#cRemote").textContent=fmt(s.remote);$("#cEdu").textContent=fmt(s.education);
-    $("#cChurch").textContent=fmt(s.church);$("#cFam").textContent=fmt(s.family);$("#cRest").textContent=fmt(s.rest);$("#cOpen").textContent=fmt(s.open);
+    $("#cChurch").textContent=fmt(s.church);$("#cFam").textContent=fmt(s.family);$("#cTravel").textContent=fmt(s.travel);$("#cRest").textContent=fmt(s.rest);$("#cOpen").textContent=fmt(s.open);
     const g=guards(viewing);
     const pill=(ok,text)=>`<span class="pill ${ok?"ok":"warn"}">${text}${ok?"":" — below target"}</span>`;
     const pills=[];
@@ -265,7 +265,7 @@
       const p=ps[pid]||{}; const s=stats(pid);
       const btn=document.createElement("button");
       btn.className="person"; btn.dataset.pid=pid; btn.setAttribute("aria-pressed",String(pid===viewing));
-      btn.innerHTML=`<img alt=""><span class="pinfo"><span class="pname"></span><span class="pcount">Work ${fmt(s.office+s.remote)} · Edu ${fmt(s.education)} · Church ${fmt(s.church)} · Family ${fmt(s.family)} · Rest ${fmt(s.rest)}</span></span><span class="map" aria-hidden="true">${s.cells}</span>`;
+      btn.innerHTML=`<img alt=""><span class="pinfo"><span class="pname"></span><span class="pcount">Work ${fmt(s.office+s.remote)} · Edu ${fmt(s.education)} · Church ${fmt(s.church)} · Family ${fmt(s.family)}${s.travel?` · Travel ${fmt(s.travel)}`:""} · Rest ${fmt(s.rest)}</span></span><span class="map" aria-hidden="true">${s.cells}</span>`;
       if(p.avatarUrl) btn.querySelector("img").src=p.avatarUrl; else btn.querySelector("img").remove();
       btn.querySelector(".pname").textContent=(pid===me?"You":(p.name||"Staff member"));
       box.appendChild(btn);
@@ -636,7 +636,7 @@
     if(!moves.length) return;
     const dst=await ensureDay(target);
     for(const {b,items} of moves){
-      let slot=b; const bad=m=>m==="rest"||m==="family";
+      let slot=b; const bad=m=>m==="rest"||m==="family"||m==="travel";
       if(!dst.blocks[slot].split&&bad(dst.blocks[slot].mode)){const alt=BLOCKS.map(x=>x[0]).find(s=>dst.blocks[s].split||!bad(dst.blocks[s].mode));if(alt)slot=alt}
       items.forEach(it=>dropInto(target,slot,0,it));
     }
@@ -853,7 +853,7 @@
   function planOptions(){
     const dates=tab==="today"?[todayKey(),...weekDates().filter(d=>d>todayKey())]:weekDates();
     return `<option value="">Plan into a block…</option>`+dates.flatMap(d=>BLOCKS.map(([b])=>{
-      const blk=getDay(me,d).blocks[b], m=blk.split?null:blk.mode, off=m==="rest"||m==="family";
+      const blk=getDay(me,d).blocks[b], m=blk.split?null:blk.mode, off=m==="rest"||m==="family"||m==="travel";
       return `<option value="${d}|${b}"${off?" disabled":""}>${blockLabel(d,b)}${off?` (${TYPE_NAME[m]})`:""}</option>`})).join("");
   }
   /* ---------- weekly plan posted to a Basecamp project ---------- */

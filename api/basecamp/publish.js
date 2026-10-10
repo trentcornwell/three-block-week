@@ -8,7 +8,7 @@ const crypto = require("node:crypto");
 const L = require("../_lib");
 
 const BLOCKS = [["m", "Morning"], ["a", "Afternoon"], ["e", "Evening"]];
-const TYPE = { office: "Work · Office", remote: "Work · Remote", education: "Education", church: "Church", family: "Family", rest: "Rest" };
+const TYPE = { office: "Work · Office", remote: "Work · Remote", education: "Education", church: "Church", family: "Family", travel: "Travel", rest: "Rest" };
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const TZ = "America/New_York";

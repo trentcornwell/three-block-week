@@ -25,7 +25,7 @@ img{max-width:100%}
   --accent:#2a5f8f; --accent-soft:#e3edf6;
   --office:#f7f1e3; --office-line:#e2d5b6; --remote:#eef0ec; --remote-line:#cfd6cc;
   --church:#3e2f6b; --church-ink:#ffffff; --edu:#1f5fae; --edu-ink:#ffffff;
-  --warn:#a85a07; --warn-soft:#fdf0e1; --rest:#2d7d4e; --rest-ink:#ffffff; --family:#121416; --family-ink:#f4f4f2; --open-cell:#ffffff;
+  --warn:#a85a07; --warn-soft:#fdf0e1; --rest:#2d7d4e; --rest-ink:#ffffff; --travel:#b4572a; --family:#121416; --family-ink:#f4f4f2; --open-cell:#ffffff;
   --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
   --body:"Public Sans", "Segoe UI", system-ui, sans-serif;
   --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
@@ -35,14 +35,14 @@ img{max-width:100%}
   --accent:#8cbcea; --accent-soft:#1c2a36;
   --office:#332d1f; --office-line:#5c5038; --remote:#1d2b28; --remote-line:#3c5650;
   --church:#5a47a3; --church-ink:#ffffff; --edu:#3170c4; --edu-ink:#ffffff;
-  --warn:#f0a548; --warn-soft:#3a2a14; --rest:#2e8b57; --rest-ink:#ffffff; --family:#050608; --family-ink:#eceeef; --open-cell:#1d2328;
+  --warn:#f0a548; --warn-soft:#3a2a14; --rest:#2e8b57; --rest-ink:#ffffff; --travel:#c4662f; --family:#050608; --family-ink:#eceeef; --open-cell:#1d2328;
   --church-text:#b3a4f0; --edu-text:#8fbcf2; --rest-text:#5cc58a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0e1214; --surface:#171c20; --ink:#e8ebed; --muted:#a3adb4; --line:#2a3238; --line-strong:#3d474f;
   --accent:#8cbcea; --accent-soft:#1c2a36;
   --office:#332d1f; --office-line:#5c5038; --remote:#1d2b28; --remote-line:#3c5650;
   --church:#5a47a3; --church-ink:#ffffff; --edu:#3170c4; --edu-ink:#ffffff;
-  --warn:#f0a548; --warn-soft:#3a2a14; --rest:#2e8b57; --rest-ink:#ffffff; --family:#050608; --family-ink:#eceeef; --open-cell:#1d2328;
+  --warn:#f0a548; --warn-soft:#3a2a14; --rest:#2e8b57; --rest-ink:#ffffff; --travel:#c4662f; --family:#050608; --family-ink:#eceeef; --open-cell:#1d2328;
   --church-text:#b3a4f0; --edu-text:#8fbcf2; --rest-text:#5cc58a; color-scheme:dark}
 
 *{box-sizing:border-box}
@@ -473,6 +473,16 @@ body.tab-today .top{min-height:44px}
 .half[data-mode="rest"] .hfill,.half[data-mode="family"] .hfill{display:block}
 .half[data-mode="rest"] .bbody,.half[data-mode="family"] .bbody{display:none}
 .fillsplit{align-self:flex-start;margin-top:8px}
+/* Travel: protected like Family, in a warm road color */
+.map i.travel{background:var(--travel);border:1px solid var(--travel)}
+.tg.travel::before{background:var(--travel);box-shadow:0 0 0 1px rgba(255,255,255,.5)}
+.sb.travel{background:var(--travel);border-color:var(--travel);color:#fff}
+.count.travel b{color:var(--travel)}
+.block[data-mode="travel"],.half[data-mode="travel"]{background:var(--travel);border:1px solid var(--travel);--b-ink:#fff;--b-muted:rgba(255,255,255,.78);--b-line:rgba(255,255,255,.3);color:#fff}
+.block[data-mode="travel"] .bbody,.half[data-mode="travel"] .bbody{display:none}
+.block[data-mode="travel"] .bfill{display:flex}
+.block[data-mode="travel"] .btype,.block[data-mode="travel"] .bsep{display:none}
+.half[data-mode="travel"] .hfill{display:block}
 </style>
 <style>
 /* sign-in screen + account line */
@@ -561,6 +571,7 @@ body.tab-today .top{min-height:44px}
       <div class="count edu"><b id="cEdu">0</b><span>Education</span></div>
       <div class="count church"><b id="cChurch">0</b><span>Church</span></div>
       <div class="count"><b id="cFam">0</b><span>Family</span></div>
+      <div class="count travel"><b id="cTravel">0</b><span>Travel</span></div>
       <div class="count rest"><b id="cRest">0</b><span>Rest</span></div>
       <div class="count"><b id="cOpen">0</b><span>Not set</span></div>
     </div>
@@ -611,6 +622,7 @@ body.tab-today .top{min-height:44px}
     <span><i style="background:var(--edu)"></i>On-Going Education</span>
     <span><i style="background:var(--church)"></i>Church Gathering</span>
     <span><i style="background:var(--family);box-shadow:0 0 0 1px var(--line-strong)"></i>Family</span>
+    <span><i style="background:var(--travel)"></i>Travel</span>
     <span><i style="background:var(--rest)"></i>Rest</span>
     <span class="lhelp">Tap an item to edit or move it. On a computer you can also drag it, or a Basecamp to-do, into a block. Use “+1 hr break” for an errand or time away. Events can have a time: type it first, like “2pm Staff meeting”, or add it when editing. Tap the calendar icon on a block to put it on the Basecamp Schedule with everything in it as notes, or <b>BC</b> beside a single item.</span>
   </div>
