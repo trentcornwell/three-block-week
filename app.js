@@ -5,9 +5,10 @@
   const TYPES=[["office","Work · Office","Work · Office","Office"],["remote","Work · Remote","Work · Remote","Remote"],["education","On-Going Education","Education","Edu"],["church","Church Gathering","Church","Church"],["family","Family","Family","Family"],["rest","Rest","Rest","Rest"]];
   const TYPE_NAME=Object.fromEntries(TYPES.map(t=>[t[0],t[1]]));
   const TYPE_TINY=Object.fromEntries(TYPES.map(t=>[t[0],t[3]]));
-  const SPLITTABLE=["office","remote","education"];
+  const SPLITTABLE=["office","remote","education","church","family","rest"];
   const WORKLIKE=["office","remote","education","church"];
-  const COLOR={office:"var(--office)",remote:"var(--remote)",education:"var(--edu)"};
+  const COLOR={office:"var(--office)",remote:"var(--remote)",education:"var(--edu)",church:"var(--church)",family:"var(--family)",rest:"var(--rest)"};
+  const DARK=["education","church","family","rest"];
   const DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const DOW3=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -136,6 +137,7 @@
       const halves=blk.halves.map((hf,h)=>`<div class="half" data-h="${h}" data-mode="${hf.mode}">
           <div class="hhead"><span class="hname">${h?"Second half":"First half"}</span><span class="btype"${readOnly?"":` data-act="chips" role="button" tabindex="0"`}>${TYPE_NAME[hf.mode]}</span></div>
           ${readOnly?"":chipsHTML(hf.mode,SPLITTABLE,readOnly,`${label} ${h?"second":"first"} half`)}
+          <div class="hfill">Protected time</div>
           <div class="bbody">${listHTML(hf,`${base}-${h}`,readOnly)}</div>
         </div>`).join("");
       return `<div class="block is-split${blk.share?" shared":""}" data-date="${date}" data-b="${b}">
@@ -152,7 +154,7 @@
       <div class="bhead"><span class="bname">${label}</span>${mode?`<span class="bsep" aria-hidden="true">·</span><span class="btype"${readOnly?"":` data-act="chips" role="button" tabindex="0"`}>${TYPE_NAME[mode]||""}</span>`:""}${mode?shareBox(blk.share,readOnly,true):""}</div>
       ${chipsHTML(mode,TYPES.map(t=>t[0]),readOnly,label)}
       ${calHTML(date,b)}
-      <div class="bfill"><strong>${TYPE_NAME[mode]||""}</strong>${kept?`<small>${kept}</small>`:""}${readOnly?"":`<button type="button" class="chgbtn" data-act="chips">Change</button>`}</div>
+      <div class="bfill"><strong>${TYPE_NAME[mode]||""}</strong>${kept?`<small>${kept}</small>`:""}${readOnly?"":`<button type="button" class="chgbtn" data-act="chips">Change</button>`}${canSplit?`<button class="split-btn fillsplit" data-act="split">Split into two halves</button>`:""}</div>
       <div class="bbody">${listHTML(blk,base,readOnly)}
         ${canSplit?`<div><button class="split-btn" data-act="split">Split into two halves</button></div>`:""}
       </div>
@@ -218,7 +220,7 @@
     const c={office:0,remote:0,education:0,church:0,family:0,rest:0,open:0,eveWork:0}; const cells=[];
     for(const date of weekDates()){const d=getDay(pid,date);
       for(const [b] of BLOCKS){const blk=d.blocks[b];
-        if(blk.split){const [h0,h1]=blk.halves;c[h0.mode]+=.5;c[h1.mode]+=.5;if(b==="e")c.eveWork++;
+        if(blk.split){const [h0,h1]=blk.halves;c[h0.mode]+=.5;c[h1.mode]+=.5;if(b==="e"&&(WORKLIKE.includes(h0.mode)||WORKLIKE.includes(h1.mode)))c.eveWork++;
           cells.push(`<i class="split" style="background:linear-gradient(90deg,${COLOR[h0.mode]} 50%,${COLOR[h1.mode]} 50%)"></i>`);continue}
         let cls="";
         if(blk.mode&&c[blk.mode]!==undefined){c[blk.mode]++;cls=blk.mode;if(b==="e"&&WORKLIKE.includes(blk.mode))c.eveWork++}
@@ -311,7 +313,7 @@
     const bar=(blk,label)=>{
       const titleFor=o=>{const b=o.items.filter(i=>i.kind==="break").length;return [...o.items.filter(i=>i.kind==="obj").map(i=>i.text),...(b?[b+" hr break"]:[])].join(" · ")};
       if(blk.split){const [h0,h1]=blk.halves;const t=[titleFor(h0),titleFor(h1)].filter(Boolean).join(" · ");
-        return `<div class="sb" style="background:linear-gradient(90deg,${COLOR[h0.mode]} 50%,${COLOR[h1.mode]} 50%)" title="${esc(label+": "+TYPE_NAME[h0.mode]+" / "+TYPE_NAME[h1.mode]+(t?" — "+t:""))}">${TYPE_TINY[h0.mode]} / ${TYPE_TINY[h1.mode]}</div>`}
+        return `<div class="sb" style="background:linear-gradient(90deg,${COLOR[h0.mode]} 50%,${COLOR[h1.mode]} 50%)${DARK.includes(h0.mode)||DARK.includes(h1.mode)?";color:#fff;text-shadow:0 0 3px rgba(0,0,0,.7)":""}" title="${esc(label+": "+TYPE_NAME[h0.mode]+" / "+TYPE_NAME[h1.mode]+(t?" — "+t:""))}">${TYPE_TINY[h0.mode]} / ${TYPE_TINY[h1.mode]}</div>`}
       const m=blk.mode; const t=titleFor(blk);
       return `<div class="sb ${m||"none"}" title="${esc(label+": "+(m?TYPE_NAME[m]:"Not set")+(t?" — "+t:""))}">${m?TYPE_TINY[m]:"—"}</div>`;
     };

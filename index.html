@@ -356,7 +356,7 @@ td.today-col{background:color-mix(in srgb,var(--accent) 6%,transparent)}
   .btype[data-act="chips"]::after{content:" ▾";font-size:.7em;opacity:.7}
   /* Fewer boxes */
   .shr:not(.blk){display:none}
-  .split-btn[data-act="split"]{display:none}
+  .block:not(.chips-open) .split-btn[data-act="split"]{display:none}
   /* Bigger checkboxes */
   .it input[type=checkbox],.week.today-view .it input[type=checkbox]{width:22px;height:22px;margin-top:1px}
   /* Tabs along the bottom, within thumb reach */
@@ -465,6 +465,14 @@ body.tab-today .top{min-height:44px}
 /* Rest and Family blocks: a Change button to bring the type choices back (needed on phones) */
 .chgbtn{display:none;align-self:flex-start;margin-top:8px;border:1px solid var(--b-line);background:transparent;color:var(--b-ink);border-radius:999px;padding:5px 12px;font:600 .8rem var(--body);cursor:pointer}
 @media (max-width:700px){.block[data-mode]:not(.chips-open) .chgbtn{display:inline-block}}
+/* Every type can be one half of a split block */
+.half[data-mode="church"]{background:var(--church);border:1px solid var(--church);--b-ink:var(--church-ink);--b-muted:rgba(255,255,255,.72);--b-line:rgba(255,255,255,.25)}
+.half[data-mode="rest"]{background:var(--rest);border:1px solid var(--rest);--b-ink:var(--rest-ink);--b-muted:rgba(255,255,255,.75);--b-line:rgba(255,255,255,.3)}
+.half[data-mode="family"]{background:var(--family);border:1px solid var(--line-strong);--b-ink:var(--family-ink);--b-muted:rgba(255,255,255,.65);--b-line:rgba(255,255,255,.22)}
+.hfill{display:none;font-size:.8rem;color:var(--b-muted)}
+.half[data-mode="rest"] .hfill,.half[data-mode="family"] .hfill{display:block}
+.half[data-mode="rest"] .bbody,.half[data-mode="family"] .bbody{display:none}
+.fillsplit{align-self:flex-start;margin-top:8px}
 </style>
 <style>
 /* sign-in screen + account line */
