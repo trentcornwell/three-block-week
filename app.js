@@ -853,7 +853,7 @@
   function planOptions(){
     const dates=tab==="today"?[todayKey(),...weekDates().filter(d=>d>todayKey())]:weekDates();
     return `<option value="">Plan into a block…</option>`+dates.flatMap(d=>BLOCKS.map(([b])=>{
-      const blk=getDay(me,d).blocks[b], m=blk.split?null:blk.mode, off=m==="rest"||m==="family"||m==="travel";
+      const blk=getDay(me,d).blocks[b], m=blk.split?null:blk.mode, off=m==="rest"||m==="travel";
       return `<option value="${d}|${b}"${off?" disabled":""}>${blockLabel(d,b)}${off?` (${TYPE_NAME[m]})`:""}</option>`})).join("");
   }
   /* ---------- weekly plan posted to a Basecamp project ---------- */
