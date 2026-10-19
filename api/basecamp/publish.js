@@ -9,6 +9,10 @@ const L = require("../_lib");
 
 const BLOCKS = [["m", "Morning"], ["a", "Afternoon"], ["e", "Evening"]];
 const TYPE = { office: "Work · Office", remote: "Work · Remote", education: "Education", church: "Church", family: "Family", travel: "Travel", rest: "Rest" };
+// Short names used as Schedule entry titles (no person's name; the entry is tagged with the person).
+const SHORT = { office: "Office", remote: "Remote", education: "Education", church: "Church", family: "Family", travel: "Travel", rest: "Rest" };
+const SHORT_NAMES = new Set(Object.values(SHORT));
+const isBlockTitle = t => String(t || "").split(" / ").every(p => SHORT_NAMES.has(p));
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const TZ = "America/New_York";
@@ -36,7 +40,7 @@ function blockNotes(conts, split) {
     const evs = byTime(items.filter(i => i.kind === "event")), objs = items.filter(i => i.kind === "obj");
     const tasks = items.filter(i => i.kind === "task" || !i.kind), convs = items.filter(i => i.kind === "conv"), brks = items.filter(i => i.kind === "break");
     const mark = t => (t.done ? "✓ " : "");
-    let h = split && c.mode ? `<div><strong>${esc(TYPE[c.mode])}</strong></div>` : "";
+    let h = split && c.mode ? `<div><strong>${esc(SHORT[c.mode])}</strong></div>` : "";
     if (evs.length) h += `<div><strong>Events</strong></div><ul>${evs.map(e => `<li>${e.time ? fmtTime(e.time) + " " : ""}${esc(e.text)}</li>`).join("")}</ul>`;
     if (objs.length) h += `<div><strong>Objectives</strong></div><ul>${objs.map(o => `<li>${esc(o.text)}${(o.tasks || []).length ? `<ul>${o.tasks.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>` : ""}</li>`).join("")}</ul>`;
     if (convs.length) h += `<div><strong>Conversations</strong></div><ul>${convs.map(t => `<li>${mark(t)}${esc(t.text)}</li>`).join("")}</ul>`;
@@ -55,7 +59,7 @@ function sharedFor(day) {
     const blk = (day.blocks || {})[b]; if (!blk) continue;
     const conts = blk.split ? (blk.halves || []) : [blk];
     const modes = conts.map(c => c.mode && TYPE[c.mode]).filter(Boolean);
-    if (blk.share && modes.length) { out.push({ key: `b:${b}`, b, bl, kind: "block", text: modes.join(" / "), notes: blockNotes(conts, !!blk.split) }); continue; }
+    if (blk.share && modes.length) { out.push({ key: `b:${b}`, b, bl, kind: "block", text: modes.join(" / "), short: conts.map(c => c.mode && SHORT[c.mode]).filter(Boolean).join(" / "), notes: blockNotes(conts, !!blk.split) }); continue; }
     for (const c of conts) for (const i of c.items || []) {
       if (i.share && (i.kind === "event" || i.kind === "obj" || i.kind === "task" || !i.kind)) out.push({ key: `i:${i.id}`, b, bl, kind: i.kind || "task", text: i.text, time: i.kind === "event" ? i.time : null, notes: i.kind === "obj" && (i.tasks || []).length ? `<ul>${i.tasks.map(t => `<li>${t.done ? "✓ " : ""}${esc(t.text)}</li>`).join("")}</ul>` : "" });
       if (i.kind === "obj") for (const t of i.tasks || []) if (t.share && !i.share) out.push({ key: `i:${t.id}`, b, bl, kind: "task", text: t.text, time: null, notes: "" });
@@ -118,7 +122,7 @@ function desiredEntries(ws, data, peopleIds) {
     for (const x of sharedFor(d.data || {})) {
       const st = x.time || SPAN[x.b][0], en = x.time ? addHour(x.time) : SPAN[x.b][1];
       const k = x.kind === "block" ? `b:${d.user_id}:${date}:${x.b}` : `e:${d.user_id}:${x.key.slice(2)}`;
-      want[k] = { summary: `${who} · ${x.text}`, starts_at: nyISO(date, st), ends_at: nyISO(date, en), description: x.notes || "", participant_ids: pids };
+      want[k] = { summary: x.kind === "block" ? x.short : x.text, starts_at: nyISO(date, st), ends_at: nyISO(date, en), description: x.notes || "", participant_ids: pids };
     }
   }
   return want;
@@ -178,7 +182,8 @@ async function syncSchedule(link, s, want, have, deadline, ws, names, checkpoint
     if (sweep && me && names.length) {
       const known = new Set(Object.values(have).map(h => String(h.id)));
       const lo = nyISO(ws, "00:00"), hi = nyISO(addDays(ws, 7), "00:00");
-      const ours = e => e.creator && e.creator.id === me.id && names.some(nm => String(e.summary || "").startsWith(nm + " · "));
+      // Ours: posted by this connection and titled the way the planner titles entries (old "Name · …" style or a block type).
+      const ours = e => e.creator && e.creator.id === me.id && (names.some(nm => String(e.summary || "").startsWith(nm + " · ")) || isBlockTitle(e.summary));
       const inWeek = e => { const t = Date.parse(e.starts_at); return t >= Date.parse(lo) && t < Date.parse(hi); };
       const all = await listEntries(link, s, sched, Date.parse(hi));
       for (const e of all) {
